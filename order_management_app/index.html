@@ -187,6 +187,61 @@ tbody td{padding:.75rem .9rem;font-size:.83rem;vertical-align:middle}
 .empty-icon{font-size:1.8rem;margin-bottom:.6rem}
 .divider{border:none;border-top:1px solid var(--border);margin:.9rem 0}
 .flex-row{display:flex;gap:.5rem;flex-wrap:wrap}
+
+/* ---- Mobile bottom nav ---- */
+#mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:100;padding:.4rem 0 calc(.4rem + env(safe-area-inset-bottom))}
+#mobile-nav .mnav-items{display:flex;justify-content:space-around}
+.mnav-item{display:flex;flex-direction:column;align-items:center;gap:.15rem;padding:.35rem .75rem;cursor:pointer;color:var(--muted);font-size:.62rem;font-weight:500;border-radius:6px;transition:color .15s;position:relative}
+.mnav-item.active{color:var(--primary)}
+.mnav-icon{font-size:1.2rem}
+.mnav-badge{position:absolute;top:.2rem;right:.5rem;background:var(--primary);color:#fff;font-size:.55rem;font-weight:700;padding:.05rem .35rem;border-radius:20px}
+
+/* ---- Hamburger ---- */
+#hamburger{display:none;background:none;border:none;color:var(--text);cursor:pointer;font-size:1.2rem;padding:.25rem}
+
+/* ---- Sidebar overlay on mobile ---- */
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:49}
+#sidebar-overlay.open{display:block}
+
+/* ---- Mobile: table scrolls horizontally ---- */
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+/* ---- Responsive ---- */
+@media(max-width:768px){
+  #sidebar{transform:translateX(-100%);transition:transform .25s ease;z-index:60}
+  #sidebar.mobile-open{transform:translateX(0)}
+  #main{margin-left:0;padding-bottom:70px}
+  #hamburger{display:block}
+  #mobile-nav{display:block}
+  .view-header{padding:.9rem 1rem .7rem}
+  .view-body{padding:.9rem 1rem}
+  .view-title{font-size:1rem}
+  .stats-grid{grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.9rem}
+  .stat-value{font-size:1.25rem}
+  .filters{gap:.4rem}
+  .filters select,.filters input[type=date]{flex:1 1 calc(50% - .4rem)}
+  .search-wrap{flex:1 1 100%}
+  .table-wrap{border-radius:6px}
+  .table-scroll{border-radius:6px}
+  /* hide less important columns on mobile */
+  thead th:nth-child(4),tbody td:nth-child(4){display:none} /* items */
+  thead th:nth-child(6),tbody td:nth-child(6){display:none} /* method */
+  tbody td{padding:.6rem .7rem;font-size:.8rem}
+  thead th{padding:.55rem .7rem}
+  #drawer{width:100%;right:-100%}
+  .info-grid{grid-template-columns:1fr}
+  .widgets-grid{grid-template-columns:1fr}
+  .widget[style*="span 2"]{grid-column:span 1!important}
+  #toast-container{left:.75rem;right:.75rem;bottom:80px}
+  .toast{min-width:unset;width:100%}
+  .sidebar-footer{display:none}
+  .nav-section{display:none}
+}
+
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr 1fr}
+  thead th:nth-child(2),tbody td:nth-child(2){display:none} /* date on very small */
+}
 </style>
 </head>
 <body>
@@ -226,8 +281,11 @@ tbody td{padding:.75rem .9rem;font-size:.83rem;vertical-align:middle}
   <!-- ORDERS -->
   <div id="view-orders" class="view active">
     <div class="view-header">
-      <div><div class="view-title">Orders</div><div class="view-sub" id="orders-sub">Loading…</div></div>
-      <button class="btn btn-ghost btn-sm" onclick="toast('Exporting orders to CSV…','info')">⬇ Export CSV</button>
+      <div style="display:flex;align-items:center;gap:.6rem">
+        <button id="hamburger" onclick="openSidebar()">☰</button>
+        <div><div class="view-title">Orders</div><div class="view-sub" id="orders-sub">Loading…</div></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="toast('Exporting orders to CSV…','info')">⬇ Export</button>
     </div>
     <div class="view-body">
       <div class="stats-grid" id="order-stats"></div>
@@ -260,7 +318,7 @@ tbody td{padding:.75rem .9rem;font-size:.83rem;vertical-align:middle}
         <input type="date" id="filter-from" onchange="applyFilters()" title="From date"/>
         <input type="date" id="filter-to" onchange="applyFilters()" title="To date"/>
       </div>
-      <div class="table-wrap">
+      <div class="table-wrap table-scroll">
         <table>
           <thead><tr>
             <th onclick="sortBy('id')">Order ID ↕</th>
@@ -285,7 +343,7 @@ tbody td{padding:.75rem .9rem;font-size:.83rem;vertical-align:middle}
     </div>
     <div class="view-body">
       <div class="stats-grid" id="report-stats"></div>
-      <div class="table-wrap">
+      <div class="table-wrap table-scroll">
         <table>
           <thead><tr>
             <th>Payout ID</th><th>Period</th><th>Transactions</th>
@@ -324,6 +382,25 @@ tbody td{padding:.75rem .9rem;font-size:.83rem;vertical-align:middle}
   </div>
 
 </div><!-- /main -->
+
+<!-- Mobile bottom nav -->
+<nav id="mobile-nav">
+  <div class="mnav-items">
+    <div class="mnav-item active" onclick="showView('orders')" id="mnav-orders">
+      <span class="mnav-icon">📋</span><span>Orders</span>
+      <span class="mnav-badge" id="mbadge-orders">0</span>
+    </div>
+    <div class="mnav-item" onclick="showView('reports')" id="mnav-reports">
+      <span class="mnav-icon">💰</span><span>Reports</span>
+    </div>
+    <div class="mnav-item" onclick="showView('insights')" id="mnav-insights">
+      <span class="mnav-icon">📊</span><span>Insights</span>
+    </div>
+  </div>
+</nav>
+
+<!-- Sidebar overlay for mobile -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
 <div id="overlay" onclick="closeDrawer()"></div>
 <div id="drawer">
@@ -532,12 +609,23 @@ function toast(msg,type='info'){
 function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.mnav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById(`view-${name}`).classList.add('active');
   document.getElementById(`nav-${name}`).classList.add('active');
+  const mn=document.getElementById(`mnav-${name}`);if(mn)mn.classList.add('active');
   state.view=name;
+  closeSidebar();
   if(name==='orders'){renderOrderStats();applyFilters();}
   if(name==='reports')renderReports();
   if(name==='insights')renderInsights();
+}
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('mobile-open');
+  document.getElementById('sidebar-overlay').classList.add('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
 }
 
 // ═══════════════════════════════════════════════
@@ -555,6 +643,7 @@ function renderOrderStats(){
     <div class="stat-card"><div class="stat-label">Total Refunded</div><div class="stat-value">${fmt(refunded)}</div><div class="stat-change down">↓ returned to customers</div></div>
   `;
   document.getElementById('badge-orders').textContent=pending;
+  const mb=document.getElementById('mbadge-orders');if(mb)mb.textContent=pending;
 }
 
 function applyFilters(){
