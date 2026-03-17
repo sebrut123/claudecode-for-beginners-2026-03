@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ASSET COMMANDER // MISSION CONTROL</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --neon-green: #00ff88;
+    --neon-blue: #00cfff;
+    --neon-pink: #ff2d78;
+    --neon-yellow: #ffe600;
+    --neon-purple: #b44fff;
+    --bg: #040d14;
+    --panel: #080f1a;
+    --border: #0a2540;
+    --text: #a0c4d8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* scanline overlay */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.15) 2px, rgba(0,0,0,.15) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: .3rem;
+    color: var(--neon-green);
+    text-shadow: 0 0 20px var(--neon-green);
+  }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--neon-green);
+    box-shadow: 0 4px 30px rgba(0,255,136,.15);
+    position: sticky; top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+
+  #hud {
+    display: flex; gap: 1.5rem; align-items: center;
+  }
+
+  #xp-bar-wrap {
+    width: 160px;
+  }
+
+  #xp-label {
+    font-size: .7rem;
+    color: var(--neon-yellow);
+    display: flex; justify-content: space-between;
+  }
+
+  #xp-bar {
+    height: 8px;
+    background: #0a2540;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  #xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-yellow), var(--neon-green));
+    border-radius: 4px;
+    transition: width .5s ease;
+    box-shadow: 0 0 8px var(--neon-yellow);
+    width: 0%;
+  }
+
+  .stat-badge {
+    text-align: center;
+    font-size: .65rem;
+    color: var(--neon-blue);
+    text-transform: uppercase;
+    letter-spacing: .1rem;
+  }
+
+  .stat-badge span {
+    display: block;
+    font-size: 1.3rem;
+    font-family: 'Orbitron', sans-serif;
+    color: var(--neon-green);
+    text-shadow: 0 0 10px var(--neon-green);
+  }
+
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 1rem;
+    padding: 1rem 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1rem;
+    position: relative;
+    transition: border-color .3s;
+  }
+
+  .panel:hover { border-color: var(--neon-blue); }
+
+  .panel-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: .75rem;
+    letter-spacing: .2rem;
+    text-transform: uppercase;
+    margin-bottom: .8rem;
+    padding-bottom: .4rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-title.green  { color: var(--neon-green);  text-shadow: 0 0 8px var(--neon-green); }
+  .panel-title.blue   { color: var(--neon-blue);   text-shadow: 0 0 8px var(--neon-blue); }
+  .panel-title.pink   { color: var(--neon-pink);   text-shadow: 0 0 8px var(--neon-pink); }
+  .panel-title.yellow { color: var(--neon-yellow); text-shadow: 0 0 8px var(--neon-yellow); }
+  .panel-title.purple { color: var(--neon-purple); text-shadow: 0 0 8px var(--neon-purple); }
+
+  label {
+    font-size: .7rem;
+    color: var(--neon-blue);
+    display: block;
+    margin-bottom: .2rem;
+    margin-top: .5rem;
+    text-transform: uppercase;
+    letter-spacing: .1rem;
+  }
+
+  input, select {
+    width: 100%;
+    background: #040d14;
+    border: 1px solid #0a2540;
+    color: var(--neon-green);
+    padding: .4rem .6rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .85rem;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+
+  input:focus, select:focus {
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 10px rgba(0,207,255,.3);
+  }
+
+  button {
+    margin-top: .8rem;
+    width: 100%;
+    padding: .6rem;
+    font-family: 'Orbitron', sans-serif;
+    font-size: .7rem;
+    letter-spacing: .15rem;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  button::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,.1);
+    opacity: 0;
+    transition: opacity .15s;
+  }
+
+  button:active::after { opacity: 1; }
+
+  .btn-green  { background: var(--neon-green);  color: #000; box-shadow: 0 0 12px rgba(0,255,136,.4); }
+  .btn-blue   { background: var(--neon-blue);   color: #000; box-shadow: 0 0 12px rgba(0,207,255,.4); }
+  .btn-pink   { background: var(--neon-pink);   color: #fff; box-shadow: 0 0 12px rgba(255,45,120,.4); }
+  .btn-yellow { background: var(--neon-yellow); color: #000; box-shadow: 0 0 12px rgba(255,230,0,.4); }
+  .btn-purple { background: var(--neon-purple); color: #fff; box-shadow: 0 0 12px rgba(180,79,255,.4); }
+
+  button:hover { transform: translateY(-1px); filter: brightness(1.15); }
+
+  .btn-sm {
+    width: auto;
+    padding: .3rem .8rem;
+    font-size: .6rem;
+    margin-top: .4rem;
+    display: inline-block;
+  }
+
+  /* Asset list */
+  #asset-list {
+    grid-column: 1 / -1;
+  }
+
+  #assets-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: .6rem;
+    max-height: 340px;
+    overflow-y: auto;
+  }
+
+  .asset-card {
+    background: #040d14;
+    border: 1px solid #0a2540;
+    border-radius: 4px;
+    padding: .7rem;
+    font-size: .78rem;
+    transition: border-color .2s, transform .2s;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .asset-card:hover { border-color: var(--neon-blue); transform: translateY(-2px); }
+  .asset-card.selected { border-color: var(--neon-green); box-shadow: 0 0 12px rgba(0,255,136,.3); }
+
+  .asset-card.inactive { opacity: .5; border-color: #1a1a2e; }
+  .asset-card.decommissioned { opacity: .3; border-style: dashed; }
+
+  .asset-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: .75rem;
+    color: var(--neon-green);
+    margin-bottom: .3rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .asset-type {
+    font-size: .65rem;
+    color: var(--neon-blue);
+    text-transform: uppercase;
+    letter-spacing: .1rem;
+  }
+
+  .asset-id {
+    font-size: .55rem;
+    color: #2a4a6a;
+    margin-top: .3rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .tag-pill {
+    display: inline-block;
+    background: rgba(180,79,255,.2);
+    border: 1px solid var(--neon-purple);
+    color: var(--neon-purple);
+    border-radius: 20px;
+    padding: .1rem .4rem;
+    font-size: .6rem;
+    margin: .1rem .1rem 0 0;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: .3rem;
+  }
+
+  .dot-active       { background: var(--neon-green);  box-shadow: 0 0 6px var(--neon-green); }
+  .dot-inactive     { background: var(--neon-yellow); box-shadow: 0 0 6px var(--neon-yellow); }
+  .dot-decommission { background: var(--neon-pink);   box-shadow: 0 0 6px var(--neon-pink); }
+
+  /* Achievements */
+  #achievements-panel { grid-column: 1 / -1; }
+
+  #achievements-grid {
+    display: flex; flex-wrap: wrap; gap: .5rem;
+  }
+
+  .achievement {
+    background: #040d14;
+    border: 1px solid #0a2540;
+    border-radius: 4px;
+    padding: .5rem .8rem;
+    font-size: .7rem;
+    text-align: center;
+    min-width: 110px;
+    opacity: .3;
+    transition: all .4s;
+  }
+
+  .achievement.unlocked {
+    opacity: 1;
+    border-color: var(--neon-yellow);
+    box-shadow: 0 0 12px rgba(255,230,0,.3);
+    animation: achievePop .4s ease;
+  }
+
+  @keyframes achievePop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+
+  .achievement-icon { font-size: 1.4rem; display: block; margin-bottom: .2rem; }
+  .achievement-name { color: var(--neon-yellow); font-family: 'Orbitron', sans-serif; font-size: .6rem; letter-spacing: .1rem; }
+
+  /* Log */
+  #log-panel { grid-column: 1 / -1; }
+
+  #log {
+    max-height: 160px;
+    overflow-y: auto;
+    font-size: .75rem;
+    line-height: 1.6;
+  }
+
+  .log-entry {
+    padding: .2rem 0;
+    border-bottom: 1px solid #080f1a;
+    animation: fadeIn .3s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; } }
+
+  .log-ok   { color: var(--neon-green); }
+  .log-err  { color: var(--neon-pink); }
+  .log-info { color: var(--neon-blue); }
+
+  /* Toast */
+  #toast-wrap {
+    position: fixed;
+    top: 5rem; right: 1.5rem;
+    display: flex; flex-direction: column; gap: .5rem;
+    z-index: 1000;
+    pointer-events: none;
+  }
+
+  .toast {
+    background: var(--panel);
+    border-left: 3px solid var(--neon-green);
+    padding: .7rem 1rem;
+    border-radius: 2px;
+    font-size: .8rem;
+    min-width: 260px;
+    animation: slideIn .3s ease, fadeOut .4s ease 2.6s forwards;
+    box-shadow: 0 0 20px rgba(0,0,0,.6);
+  }
+
+  .toast.error { border-color: var(--neon-pink); }
+  .toast.achievement { border-color: var(--neon-yellow); }
+
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes fadeOut { to { opacity: 0; transform: translateX(40px); } }
+
+  /* Level-up overlay */
+  #levelup {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,255,136,.05);
+    z-index: 5000;
+    align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+
+  #levelup.show { display: flex; animation: lvlFlash .8s ease forwards; }
+
+  @keyframes lvlFlash {
+    0%   { background: rgba(0,255,136,.2); }
+    100% { background: rgba(0,255,136,0); }
+  }
+
+  #levelup-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 3rem;
+    color: var(--neon-green);
+    text-shadow: 0 0 40px var(--neon-green);
+    animation: lvlText .8s ease forwards;
+  }
+
+  @keyframes lvlText { 0% { transform: scale(.5); opacity:0; } 60% { transform: scale(1.1); opacity:1; } 100% { transform: scale(1); } }
+
+  /* Checkbox toggle */
+  .toggle-wrap {
+    display: flex; align-items: center; gap: .5rem;
+    margin-top: .5rem;
+  }
+
+  .toggle-wrap input[type=checkbox] {
+    width: 16px; height: 16px;
+    accent-color: var(--neon-green);
+  }
+
+  .toggle-wrap label {
+    margin: 0;
+    font-size: .75rem;
+    cursor: pointer;
+  }
+
+  /* Selected ID display */
+  #selected-id-display {
+    font-size: .65rem;
+    color: var(--neon-yellow);
+    margin-bottom: .4rem;
+    min-height: 1rem;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #040d14; }
+  ::-webkit-scrollbar-thumb { background: #0a2540; border-radius: 2px; }
+
+  .empty-state {
+    color: #1a3a5a;
+    font-size: .8rem;
+    text-align: center;
+    padding: 1.5rem;
+    grid-column: 1 / -1;
+  }
+
+  .inline-row { display: flex; gap: .5rem; }
+  .inline-row > * { flex: 1; }
+</style>
+</head>
+<body>
+
+<div id="levelup"><div id="levelup-text">LEVEL UP!</div></div>
+<div id="toast-wrap"></div>
+
+<header>
+  <h1>// ASSET COMMANDER</h1>
+  <div id="hud">
+    <div class="stat-badge">Level<span id="level-num">1</span></div>
+    <div id="xp-bar-wrap">
+      <div id="xp-label"><span>XP</span><span id="xp-text">0 / 100</span></div>
+      <div id="xp-bar"><div id="xp-fill"></div></div>
+    </div>
+    <div class="stat-badge">Operations<span id="op-count">0</span></div>
+    <div class="stat-badge">Assets<span id="asset-count">0</span></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ADD ASSET -->
+  <div class="panel">
+    <div class="panel-title green">[ 01 ] Deploy New Asset</div>
+    <label>Asset Name</label>
+    <input id="add-name" value="HAL 9000" />
+    <label>Type</label>
+    <select id="add-type">
+      <option value="hardware">hardware</option>
+      <option value="software">software</option>
+      <option value="network">network</option>
+      <option value="virtual">virtual</option>
+    </select>
+    <label>Description</label>
+    <input id="add-desc" value="Sentient shipboard computer. Handle with care." />
+    <label>OS Name (optional)</label>
+    <input id="add-os-name" value="HAL/OS" />
+    <label>OS Version (optional)</label>
+    <input id="add-os-ver" value="9000.1" />
+    <button class="btn-green" onclick="deployAsset()">&#9658; DEPLOY ASSET  +30 XP</button>
+  </div>
+
+  <!-- GET BY ID -->
+  <div class="panel">
+    <div class="panel-title blue">[ 02 ] Scan Asset by ID</div>
+    <div id="selected-id-display">&#9655; Click an asset card to auto-fill ID</div>
+    <label>Asset ID</label>
+    <input id="get-id" placeholder="Paste or click a card..." />
+    <button class="btn-blue" onclick="scanAsset()">&#128269; SCAN ASSET  +10 XP</button>
+
+    <div style="margin-top:1rem">
+      <div class="panel-title yellow" style="border:none; margin-bottom:.4rem">[ 03 ] Add Tags</div>
+      <label>Asset ID</label>
+      <input id="tag-id" placeholder="Auto-filled on card click..." />
+      <label>Tags (comma-separated)</label>
+      <input id="tag-values" value="critical, finance, rack-B3" />
+      <button class="btn-purple" onclick="addTags()">&#127991; TAG IT  +20 XP</button>
+    </div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="panel">
+    <div class="panel-title yellow">[ 04 ] Toggle Asset Status</div>
+    <label>Asset ID</label>
+    <input id="status-id" placeholder="Auto-filled on card click..." />
+    <label>Action</label>
+    <select id="status-action">
+      <option value="false">Deactivate</option>
+      <option value="true">Activate</option>
+    </select>
+    <label>Operator Name</label>
+    <input id="status-by" value="Commander Shepard" />
+    <button class="btn-yellow" onclick="setStatus()">&#9889; EXECUTE STATUS  +25 XP</button>
+  </div>
+
+  <!-- DECOMMISSION -->
+  <div class="panel">
+    <div class="panel-title pink">[ 05 ] Decommission Asset</div>
+    <label>Asset ID</label>
+    <input id="decomm-id" placeholder="Auto-filled on card click..." />
+    <label>Authorized By</label>
+    <input id="decomm-by" value="Admiral Obvious" />
+    <p style="font-size:.65rem; color:var(--neon-pink); margin-top:.6rem; line-height:1.5">
+      ⚠ PERMANENT ACTION — This cannot be undone.<br/>Asset will be archived but remain queryable by ID.
+    </p>
+    <button class="btn-pink" onclick="decommission()">&#9888; DECOMMISSION  +50 XP</button>
+  </div>
+
+  <!-- ASSET LIST -->
+  <div class="panel" id="asset-list">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:.8rem">
+      <div class="panel-title green" style="margin:0; border:none">[ 06 ] Asset Registry</div>
+      <div style="display:flex; align-items:center; gap:1rem">
+        <div class="toggle-wrap">
+          <input type="checkbox" id="show-inactive" onchange="loadAssets()" />
+          <label for="show-inactive" style="color:var(--neon-yellow)">Show Inactive</label>
+        </div>
+        <button class="btn-green btn-sm" onclick="loadAssets()">&#8635; REFRESH</button>
+      </div>
+    </div>
+    <div id="assets-container"><div class="empty-state">No assets deployed yet. Launch your first asset above.</div></div>
+  </div>
+
+  <!-- ACHIEVEMENTS -->
+  <div class="panel" id="achievements-panel">
+    <div class="panel-title yellow">[ ACHIEVEMENTS ]</div>
+    <div id="achievements-grid">
+      <div class="achievement" id="ach-first-asset">
+        <span class="achievement-icon">&#128640;</span>
+        <div class="achievement-name">First Launch</div>
+      </div>
+      <div class="achievement" id="ach-five-assets">
+        <span class="achievement-icon">&#127873;</span>
+        <div class="achievement-name">Fleet Builder</div>
+      </div>
+      <div class="achievement" id="ach-tagger">
+        <span class="achievement-icon">&#127991;</span>
+        <div class="achievement-name">Tag Master</div>
+      </div>
+      <div class="achievement" id="ach-deactivator">
+        <span class="achievement-icon">&#128274;</span>
+        <div class="achievement-name">Lockdown</div>
+      </div>
+      <div class="achievement" id="ach-reactivator">
+        <span class="achievement-icon">&#9889;</span>
+        <div class="achievement-name">Back Online</div>
+      </div>
+      <div class="achievement" id="ach-decommissioner">
+        <span class="achievement-icon">&#128165;</span>
+        <div class="achievement-name">Decommissioner</div>
+      </div>
+      <div class="achievement" id="ach-scanner">
+        <span class="achievement-icon">&#128270;</span>
+        <div class="achievement-name">Deep Scan</div>
+      </div>
+      <div class="achievement" id="ach-level5">
+        <span class="achievement-icon">&#11088;</span>
+        <div class="achievement-name">Level 5 Operator</div>
+      </div>
+      <div class="achievement" id="ach-veteran">
+        <span class="achievement-icon">&#127942;</span>
+        <div class="achievement-name">Veteran (20 ops)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div class="panel" id="log-panel">
+    <div class="panel-title blue">[ OPERATIONS LOG ]</div>
+    <div id="log"></div>
+  </div>
+
+</main>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+let xp = 0, level = 1, ops = 0;
+const XP_PER_LEVEL = 100;
+const unlocked = new Set();
+
+// --- XP & Levels ---
+function addXP(amount) {
+  xp += amount;
+  ops++;
+  document.getElementById('op-count').textContent = ops;
+
+  const needed = level * XP_PER_LEVEL;
+  if (xp >= needed) {
+    xp -= needed;
+    level++;
+    document.getElementById('level-num').textContent = level;
+    showLevelUp();
+    if (level >= 5) unlock('ach-level5');
+  }
+
+  const nextNeeded = level * XP_PER_LEVEL;
+  const pct = Math.min((xp / nextNeeded) * 100, 100);
+  document.getElementById('xp-fill').style.width = pct + '%';
+  document.getElementById('xp-text').textContent = `${xp} / ${nextNeeded}`;
+
+  if (ops >= 20) unlock('ach-veteran');
+}
+
+function showLevelUp() {
+  const el = document.getElementById('levelup');
+  document.getElementById('levelup-text').textContent = `LEVEL ${level} ACHIEVED!`;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 800);
+}
+
+// --- Achievements ---
+function unlock(id) {
+  if (unlocked.has(id)) return;
+  unlocked.add(id);
+  const el = document.getElementById(id);
+  if (el) el.classList.add('unlocked');
+  const names = {
+    'ach-first-asset': '🚀 First Launch unlocked!',
+    'ach-five-assets': '🎁 Fleet Builder unlocked!',
+    'ach-tagger': '🏷 Tag Master unlocked!',
+    'ach-deactivator': '🔒 Lockdown unlocked!',
+    'ach-reactivator': '⚡ Back Online unlocked!',
+    'ach-decommissioner': '💥 Decommissioner unlocked!',
+    'ach-scanner': '🔎 Deep Scan unlocked!',
+    'ach-level5': '⭐ Level 5 Operator unlocked!',
+    'ach-veteran': '🏆 Veteran unlocked!',
+  };
+  toast(names[id] || 'Achievement unlocked!', 'achievement');
+}
+
+// --- Toast ---
+function toast(msg, type = 'ok') {
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = `toast ${type === 'error' ? 'error' : type === 'achievement' ? 'achievement' : ''}`;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3100);
+}
+
+// --- Log ---
+function log(msg, type = 'ok') {
+  const el = document.getElementById('log');
+  const entry = document.createElement('div');
+  entry.className = `log-entry log-${type}`;
+  const ts = new Date().toLocaleTimeString();
+  entry.textContent = `[${ts}] ${msg}`;
+  el.prepend(entry);
+}
+
+// --- Auto-fill ID fields on card click ---
+function selectAsset(id) {
+  ['get-id', 'tag-id', 'status-id', 'decomm-id'].forEach(f => {
+    document.getElementById(f).value = id;
+  });
+  document.getElementById('selected-id-display').textContent = `▶ Selected: ${id.slice(0, 18)}...`;
+  document.querySelectorAll('.asset-card').forEach(c => c.classList.remove('selected'));
+  const card = document.querySelector(`[data-id="${id}"]`);
+  if (card) card.classList.add('selected');
+}
+
+// --- Render assets ---
+function renderAssets(assets) {
+  const container = document.getElementById('assets-container');
+  document.getElementById('asset-count').textContent = assets.length;
+
+  if (assets.length === 0) {
+    container.innerHTML = '<div class="empty-state">No assets in registry. Deploy your first asset.</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  assets.forEach(a => {
+    const card = document.createElement('div');
+    let statusClass = '';
+    let dotClass = 'dot-active';
+    if (a.decommissioned) { statusClass = 'decommissioned'; dotClass = 'dot-decommission'; }
+    else if (!a.is_active) { statusClass = 'inactive'; dotClass = 'dot-inactive'; }
+
+    card.className = `asset-card ${statusClass}`;
+    card.dataset.id = a.id;
+    card.onclick = () => selectAsset(a.id);
+
+    const tags = (a.tags || []).map(t => `<span class="tag-pill">${t}</span>`).join('');
+
+    card.innerHTML = `
+      <div class="asset-name">
+        <span class="status-dot ${dotClass}"></span>${a.name}
+      </div>
+      <div class="asset-type">${a.asset_type}</div>
+      ${a.description ? `<div style="font-size:.65rem;color:#3a6a8a;margin-top:.2rem">${a.description}</div>` : ''}
+      ${tags ? `<div style="margin-top:.4rem">${tags}</div>` : ''}
+      <div class="asset-id">${a.id}</div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// --- API calls ---
+async function loadAssets() {
+  const inactive = document.getElementById('show-inactive').checked;
+  try {
+    const res = await fetch(`${API}/assets${inactive ? '?include_inactive=true' : ''}`);
+    const data = await res.json();
+    renderAssets(data);
+    log(`Registry refreshed — ${data.length} asset(s) found`, 'info');
+  } catch (e) {
+    log('Failed to reach API. Is the server running?', 'err');
+    toast('Cannot connect to API', 'error');
+  }
+}
+
+async function deployAsset() {
+  const name = document.getElementById('add-name').value.trim();
+  const asset_type = document.getElementById('add-type').value;
+  const description = document.getElementById('add-desc').value.trim();
+  const osName = document.getElementById('add-os-name').value.trim();
+  const osVer = document.getElementById('add-os-ver').value.trim();
+
+  const payload = { name, asset_type, description };
+  if (osName && osVer) payload.os_info = { name: osName, version: osVer };
+
+  try {
+    const res = await fetch(`${API}/assets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.status);
+
+    toast(`✓ Asset "${name}" deployed!`);
+    log(`DEPLOY // ${name} [${asset_type}] — ID: ${data.id.slice(0,8)}...`, 'ok');
+    addXP(30);
+    loadAssets();
+
+    // achievements
+    unlock('ach-first-asset');
+    const allAssets = await (await fetch(`${API}/assets?include_inactive=true`)).json();
+    if (allAssets.length >= 5) unlock('ach-five-assets');
+
+    // cycle prefill names
+    const names = ['Skynet Node', 'JARVIS v2', 'Deep Thought', 'Wintermute', 'R2-D2', 'GLaDOS', 'Mother (MU/TH/UR 6000)', 'WOPR', 'VIKI', 'Colossus'];
+    document.getElementById('add-name').value = names[Math.floor(Math.random() * names.length)];
+  } catch (e) {
+    log(`DEPLOY FAILED // ${e.message}`, 'err');
+    toast(`Deploy failed: ${e.message}`, 'error');
+  }
+}
+
+async function scanAsset() {
+  const id = document.getElementById('get-id').value.trim();
+  if (!id) { toast('Enter an Asset ID first', 'error'); return; }
+
+  try {
+    const res = await fetch(`${API}/assets/${id}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.status);
+
+    log(`SCAN // ${data.name} — active:${data.is_active} decommissioned:${data.decommissioned}`, 'ok');
+    toast(`✓ Scanned: ${data.name}`);
+    addXP(10);
+    unlock('ach-scanner');
+  } catch (e) {
+    log(`SCAN FAILED // ${e.message}`, 'err');
+    toast(`Scan failed: ${e.message}`, 'error');
+  }
+}
+
+async function addTags() {
+  const id = document.getElementById('tag-id').value.trim();
+  const raw = document.getElementById('tag-values').value;
+  const tags = raw.split(',').map(t => t.trim()).filter(Boolean);
+  if (!id) { toast('Enter an Asset ID first', 'error'); return; }
+  if (!tags.length) { toast('Enter at least one tag', 'error'); return; }
+
+  try {
+    const res = await fetch(`${API}/assets/${id}/tags`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tags }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.status);
+
+    log(`TAGS // ${data.name} now has [${data.tags.join(', ')}]`, 'ok');
+    toast(`✓ Tags added: ${tags.join(', ')}`);
+    addXP(20);
+    unlock('ach-tagger');
+    loadAssets();
+  } catch (e) {
+    log(`TAG FAILED // ${e.message}`, 'err');
+    toast(`Tag failed: ${e.message}`, 'error');
+  }
+}
+
+async function setStatus() {
+  const id = document.getElementById('status-id').value.trim();
+  const active = document.getElementById('status-action').value === 'true';
+  const by = document.getElementById('status-by').value.trim();
+  if (!id) { toast('Enter an Asset ID first', 'error'); return; }
+
+  try {
+    const res = await fetch(`${API}/assets/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active, by }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.status);
+
+    const action = active ? 'ACTIVATED' : 'DEACTIVATED';
+    log(`${action} // ${data.name} by ${by}`, 'ok');
+    toast(`✓ ${data.name} is now ${active ? 'active' : 'inactive'}`);
+    addXP(25);
+    if (!active) unlock('ach-deactivator');
+    else unlock('ach-reactivator');
+    loadAssets();
+  } catch (e) {
+    log(`STATUS FAILED // ${e.message}`, 'err');
+    toast(`Status change failed: ${e.message}`, 'error');
+  }
+}
+
+async function decommission() {
+  const id = document.getElementById('decomm-id').value.trim();
+  const by = document.getElementById('decomm-by').value.trim();
+  if (!id) { toast('Enter an Asset ID first', 'error'); return; }
+
+  try {
+    const res = await fetch(`${API}/assets/${id}/decommission`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ by }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.status);
+
+    log(`DECOMMISSIONED // ${data.name} by ${by} at ${new Date(data.decommissioned_at).toLocaleString()}`, 'ok');
+    toast(`✓ ${data.name} has been decommissioned`);
+    addXP(50);
+    unlock('ach-decommissioner');
+    loadAssets();
+  } catch (e) {
+    log(`DECOMMISSION FAILED // ${e.message}`, 'err');
+    toast(`Decommission failed: ${e.message}`, 'error');
+  }
+}
+
+// init
+loadAssets();
+</script>
+</body>
+</html>
