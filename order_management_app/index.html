@@ -189,58 +189,138 @@ tbody td{padding:.75rem .9rem;font-size:.83rem;vertical-align:middle}
 .flex-row{display:flex;gap:.5rem;flex-wrap:wrap}
 
 /* ---- Mobile bottom nav ---- */
-#mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:100;padding:.4rem 0 calc(.4rem + env(safe-area-inset-bottom))}
+#mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:100;padding:.5rem 0 calc(.5rem + env(safe-area-inset-bottom,0px))}
 #mobile-nav .mnav-items{display:flex;justify-content:space-around}
-.mnav-item{display:flex;flex-direction:column;align-items:center;gap:.15rem;padding:.35rem .75rem;cursor:pointer;color:var(--muted);font-size:.62rem;font-weight:500;border-radius:6px;transition:color .15s;position:relative}
+.mnav-item{display:flex;flex-direction:column;align-items:center;gap:.2rem;padding:.4rem 1.5rem;cursor:pointer;color:var(--muted);font-size:.65rem;font-weight:500;transition:color .15s;position:relative;border-radius:8px}
 .mnav-item.active{color:var(--primary)}
-.mnav-icon{font-size:1.2rem}
-.mnav-badge{position:absolute;top:.2rem;right:.5rem;background:var(--primary);color:#fff;font-size:.55rem;font-weight:700;padding:.05rem .35rem;border-radius:20px}
+.mnav-icon{font-size:1.3rem;line-height:1}
+.mnav-badge{position:absolute;top:.15rem;right:.9rem;background:var(--primary);color:#fff;font-size:.55rem;font-weight:700;padding:.05rem .35rem;border-radius:20px;min-width:16px;text-align:center}
 
 /* ---- Hamburger ---- */
-#hamburger{display:none;background:none;border:none;color:var(--text);cursor:pointer;font-size:1.2rem;padding:.25rem}
+#hamburger{display:none;background:none;border:none;color:var(--text);cursor:pointer;font-size:1.3rem;padding:.2rem .4rem;line-height:1;flex-shrink:0}
 
 /* ---- Sidebar overlay on mobile ---- */
-#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:49}
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:59}
 #sidebar-overlay.open{display:block}
 
-/* ---- Mobile: table scrolls horizontally ---- */
-.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-
-/* ---- Responsive ---- */
+/* ════════════════════════════════════════
+   MOBILE  (≤ 768px)
+════════════════════════════════════════ */
 @media(max-width:768px){
+
+  /* Sidebar slides in as overlay */
   #sidebar{transform:translateX(-100%);transition:transform .25s ease;z-index:60}
   #sidebar.mobile-open{transform:translateX(0)}
-  #main{margin-left:0;padding-bottom:70px}
   #hamburger{display:block}
   #mobile-nav{display:block}
-  .view-header{padding:.9rem 1rem .7rem}
-  .view-body{padding:.9rem 1rem}
-  .view-title{font-size:1rem}
-  .stats-grid{grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.9rem}
-  .stat-value{font-size:1.25rem}
-  .filters{gap:.4rem}
-  .filters select,.filters input[type=date]{flex:1 1 calc(50% - .4rem)}
-  .search-wrap{flex:1 1 100%}
-  .table-wrap{border-radius:6px}
-  .table-scroll{border-radius:6px}
-  /* hide less important columns on mobile */
-  thead th:nth-child(4),tbody td:nth-child(4){display:none} /* items */
-  thead th:nth-child(6),tbody td:nth-child(6){display:none} /* method */
-  tbody td{padding:.6rem .7rem;font-size:.8rem}
-  thead th{padding:.55rem .7rem}
+  #main{margin-left:0;padding-bottom:72px}
+
+  /* Header */
+  .view-header{padding:.75rem 1rem;gap:.5rem}
+  .view-title{font-size:.95rem}
+  .view-sub{font-size:.72rem}
+  .view-body{padding:.75rem .85rem}
+
+  /* Stats: 2 columns */
+  .stats-grid{grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:.85rem}
+  .stat-card{padding:.8rem}
+  .stat-label{font-size:.62rem}
+  .stat-value{font-size:1.15rem}
+  .stat-change{font-size:.67rem}
+
+  /* Filters: stack cleanly */
+  .filters{flex-direction:column;gap:.45rem}
+  .search-wrap{width:100%;min-width:unset}
+  .filters select{width:100%}
+  .filters input[type=date]{width:100%}
+
+  /* ── Orders table → card list ── */
+  .table-wrap{background:transparent;border:none;border-radius:0;overflow:visible}
+  #orders-tbody tr{
+    display:grid;
+    grid-template-columns:1fr auto;
+    grid-template-rows:auto auto auto;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:.85rem;
+    margin-bottom:.55rem;
+    gap:.25rem .5rem;
+    cursor:pointer;
+    transition:border-color .15s;
+  }
+  #orders-tbody tr:hover{border-color:var(--primary)}
+  /* col 1: order id */
+  #orders-tbody td:nth-child(1){grid-column:1;grid-row:1;font-size:.75rem;font-weight:600;color:var(--primary);font-family:monospace}
+  /* col 2: date */
+  #orders-tbody td:nth-child(2){grid-column:2;grid-row:1;text-align:right;font-size:.72rem;color:var(--muted)}
+  #orders-tbody td:nth-child(2) .td-muted{display:none}
+  /* col 3: customer */
+  #orders-tbody td:nth-child(3){grid-column:1/-1;grid-row:2;font-size:.88rem}
+  /* col 4: items — hidden */
+  #orders-tbody td:nth-child(4){display:none}
+  /* col 5: amount */
+  #orders-tbody td:nth-child(5){grid-column:1;grid-row:3;font-size:.88rem}
+  /* col 6: method — hidden */
+  #orders-tbody td:nth-child(6){display:none}
+  /* col 7: status */
+  #orders-tbody td:nth-child(7){grid-column:2;grid-row:3;text-align:right}
+  /* hide table header */
+  #orders-tbody ~ * thead,
+  .table-wrap table thead{display:none}
+  table thead{display:none}
+
+  /* ── Reports table → simpler ── */
+  #reports-tbody tr{
+    display:grid;
+    grid-template-columns:1fr auto;
+    grid-template-rows:auto auto auto;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:.85rem;
+    margin-bottom:.55rem;
+    gap:.2rem .5rem;
+    cursor:pointer;
+  }
+  #reports-tbody td:nth-child(1){grid-column:1;grid-row:1;font-size:.75rem;font-weight:600;color:var(--primary);font-family:monospace}
+  #reports-tbody td:nth-child(2){grid-column:1/-1;grid-row:2;font-size:.75rem;color:var(--muted)}
+  #reports-tbody td:nth-child(3){display:none}
+  #reports-tbody td:nth-child(4){grid-column:1;grid-row:3;font-size:.8rem}
+  #reports-tbody td:nth-child(5){display:none}
+  #reports-tbody td:nth-child(6){grid-column:1;grid-row:3;text-align:left;color:var(--success);font-weight:600}
+  #reports-tbody td:nth-child(7){grid-column:2;grid-row:1;text-align:right}
+  #reports-tbody td:nth-child(8){grid-column:2;grid-row:3;text-align:right;font-size:.75rem;color:var(--muted)}
+  /* payout detail rows span full width */
+  .payout-details td{display:block!important;grid-column:1/-1}
+
+  /* Remove table structure for card rows */
+  .table-wrap table{display:block}
+  .table-wrap thead{display:none!important}
+  .table-wrap tbody{display:block}
+
+  /* Drawer */
   #drawer{width:100%;right:-100%}
-  .info-grid{grid-template-columns:1fr}
+  .drawer-header{padding:.85rem 1rem}
+  .drawer-body{padding:.85rem 1rem}
+  .drawer-section{margin-bottom:1.1rem}
+  .info-grid{grid-template-columns:1fr 1fr}
+
+  /* Insights */
   .widgets-grid{grid-template-columns:1fr}
   .widget[style*="span 2"]{grid-column:span 1!important}
+  .view-header select{font-size:.75rem;padding:.35rem .5rem}
+
+  /* Toasts */
   #toast-container{left:.75rem;right:.75rem;bottom:80px}
   .toast{min-width:unset;width:100%}
+
+  /* Sidebar footer / section labels */
   .sidebar-footer{display:none}
   .nav-section{display:none}
-}
 
-@media(max-width:480px){
-  .stats-grid{grid-template-columns:1fr 1fr}
-  thead th:nth-child(2),tbody td:nth-child(2){display:none} /* date on very small */
+  /* Report stats grid */
+  #report-stats.stats-grid{grid-template-columns:1fr 1fr}
 }
 </style>
 </head>
