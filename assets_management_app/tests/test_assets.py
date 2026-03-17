@@ -61,3 +61,137 @@ def test_list_assets_after_add():
 def test_add_asset_missing_required_field():
     response = client.post("/assets", json={"asset_type": "hardware"})
     assert response.status_code == 422
+
+
+# --- helpers ---
+
+def _create_asset(name="ThinkPad X1", asset_type="hardware"):
+    resp = client.post("/assets", json={"name": name, "asset_type": asset_type})
+    assert resp.status_code == 201
+    return resp.json()
+
+
+# --- get by ID ---
+
+def test_get_asset_by_id():
+    asset = _create_asset()
+    response = client.get(f"/assets/{asset['id']}")
+    assert response.status_code == 200
+    assert response.json()["id"] == asset["id"]
+
+
+def test_get_asset_not_found():
+    response = client.get("/assets/nonexistent-id")
+    assert response.status_code == 404
+
+
+# --- tags ---
+
+def test_add_tags():
+    asset = _create_asset()
+    response = client.post(f"/assets/{asset['id']}/tags", json={"tags": ["critical", "finance"]})
+    assert response.status_code == 200
+    assert set(response.json()["tags"]) == {"critical", "finance"}
+
+
+def test_add_tags_are_deduped():
+    asset = _create_asset()
+    client.post(f"/assets/{asset['id']}/tags", json={"tags": ["critical"]})
+    response = client.post(f"/assets/{asset['id']}/tags", json={"tags": ["critical", "finance"]})
+    assert response.json()["tags"].count("critical") == 1
+
+
+def test_add_tags_to_missing_asset():
+    response = client.post("/assets/nonexistent-id/tags", json={"tags": ["critical"]})
+    assert response.status_code == 404
+
+
+# --- activate / deactivate ---
+
+def test_deactivate_asset_hidden_from_list():
+    asset = _create_asset()
+    client.patch(f"/assets/{asset['id']}/status", json={"active": False, "by": "admin"})
+    assets = client.get("/assets").json()
+    assert all(a["id"] != asset["id"] for a in assets)
+
+
+def test_inactive_asset_visible_with_flag():
+    asset = _create_asset()
+    client.patch(f"/assets/{asset['id']}/status", json={"active": False, "by": "admin"})
+    assets = client.get("/assets?include_inactive=true").json()
+    assert any(a["id"] == asset["id"] for a in assets)
+
+
+def test_deactivate_records_who_and_when():
+    asset = _create_asset()
+    response = client.patch(f"/assets/{asset['id']}/status", json={"active": False, "by": "admin"})
+    data = response.json()
+    assert data["is_active"] is False
+    assert data["deactivated_by"] == "admin"
+    assert data["deactivated_at"] is not None
+
+
+def test_reactivate_asset_appears_in_list():
+    asset = _create_asset()
+    client.patch(f"/assets/{asset['id']}/status", json={"active": False, "by": "admin"})
+    client.patch(f"/assets/{asset['id']}/status", json={"active": True, "by": "admin"})
+    assets = client.get("/assets").json()
+    assert any(a["id"] == asset["id"] for a in assets)
+
+
+def test_deactivate_missing_asset():
+    response = client.patch("/assets/nonexistent-id/status", json={"active": False, "by": "admin"})
+    assert response.status_code == 404
+
+
+# --- decommission ---
+
+def test_decommission_asset():
+    asset = _create_asset()
+    response = client.post(f"/assets/{asset['id']}/decommission", json={"by": "admin"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["decommissioned"] is True
+    assert data["decommissioned_by"] == "admin"
+    assert data["decommissioned_at"] is not None
+
+
+def test_decommissioned_asset_hidden_from_list():
+    asset = _create_asset()
+    client.post(f"/assets/{asset['id']}/decommission", json={"by": "admin"})
+    assets = client.get("/assets").json()
+    assert all(a["id"] != asset["id"] for a in assets)
+
+
+def test_decommissioned_asset_hidden_even_with_include_inactive():
+    asset = _create_asset()
+    client.post(f"/assets/{asset['id']}/decommission", json={"by": "admin"})
+    assets = client.get("/assets?include_inactive=true").json()
+    assert all(a["id"] != asset["id"] for a in assets)
+
+
+def test_decommissioned_asset_retrievable_by_id():
+    asset = _create_asset()
+    client.post(f"/assets/{asset['id']}/decommission", json={"by": "admin"})
+    response = client.get(f"/assets/{asset['id']}")
+    assert response.status_code == 200
+    assert response.json()["decommissioned"] is True
+
+
+def test_decommission_twice_returns_409():
+    asset = _create_asset()
+    client.post(f"/assets/{asset['id']}/decommission", json={"by": "admin"})
+    response = client.post(f"/assets/{asset['id']}/decommission", json={"by": "admin"})
+    assert response.status_code == 409
+
+
+def test_decommission_missing_asset():
+    response = client.post("/assets/nonexistent-id/decommission", json={"by": "admin"})
+    assert response.status_code == 404
+
+
+def test_cannot_change_status_of_decommissioned_asset():
+    asset = _create_asset()
+    client.post(f"/assets/{asset['id']}/decommission", json={"by": "admin"})
+    response = client.patch(f"/assets/{asset['id']}/status", json={"active": True, "by": "admin"})
+    assert response.status_code == 409
