@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PayCore — Merchant Portal</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d1117; --surface:#161b27; --card:#1c2333; --border:#30363d; --border-light:#21262d;
+  --primary:#6366f1; --primary-hover:#4f46e5; --success:#10b981; --warning:#f59e0b;
+  --danger:#ef4444; --info:#3b82f6; --purple:#8b5cf6;
+  --text:#e6edf3; --muted:#7d8590; --sidebar-w:230px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
+
+/* ---- Sidebar ---- */
+#sidebar{width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;height:100vh;z-index:50}
+.sidebar-logo{padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.75rem}
+.logo-icon{width:34px;height:34px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.logo-name{font-weight:700;font-size:.95rem;letter-spacing:-.02em}
+.logo-sub{font-size:.6rem;color:var(--muted);letter-spacing:.06rem;text-transform:uppercase}
+.sidebar-nav{flex:1;padding:.5rem 0;overflow-y:auto}
+.nav-section{font-size:.6rem;font-weight:600;text-transform:uppercase;letter-spacing:.1rem;color:var(--muted);padding:.75rem 1.25rem .3rem}
+.nav-item{display:flex;align-items:center;gap:.7rem;padding:.55rem 1.25rem;cursor:pointer;color:var(--muted);font-size:.85rem;font-weight:500;transition:all .15s;position:relative}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.nav-item.active{color:var(--text);background:rgba(99,102,241,.12)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--primary);border-radius:0 2px 2px 0}
+.nav-icon{font-size:.95rem;width:18px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--primary);color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .45rem;border-radius:20px}
+.sidebar-footer{padding:.9rem 1.25rem;border-top:1px solid var(--border);font-size:.75rem;color:var(--muted)}
+
+/* ---- Main ---- */
+#main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;display:flex;flex-direction:column}
+.view-header{padding:1.25rem 2rem .9rem;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40}
+.view-title{font-size:1.15rem;font-weight:700}
+.view-sub{font-size:.78rem;color:var(--muted);margin-top:.1rem}
+.view-body{padding:1.25rem 2rem;flex:1}
+.view{display:none}.view.active{display:block}
+
+/* ---- Cards ---- */
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.25rem}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.9rem;margin-bottom:1.25rem}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.1rem}
+.stat-label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08rem;margin-bottom:.4rem}
+.stat-value{font-size:1.55rem;font-weight:700;letter-spacing:-.03em}
+.stat-change{font-size:.72rem;margin-top:.25rem;color:var(--muted)}
+.stat-change.up{color:var(--success)}.stat-change.down{color:var(--danger)}
+
+/* ---- Filters ---- */
+.filters{display:flex;gap:.6rem;margin-bottom:.9rem;flex-wrap:wrap;align-items:center}
+.search-wrap{position:relative;flex:1;min-width:180px}
+.search-wrap input{padding-left:2rem}
+.search-icon{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.85rem}
+input,select{background:var(--card);border:1px solid var(--border);color:var(--text);padding:.45rem .7rem;border-radius:6px;font-family:inherit;font-size:.83rem;outline:none;transition:border-color .15s}
+input:focus,select:focus{border-color:var(--primary)}
+input::placeholder{color:var(--muted)}
+
+/* ---- Table ---- */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--surface);padding:.65rem .9rem;text-align:left;font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06rem;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{color:var(--text)}
+tbody tr{border-bottom:1px solid var(--border-light);cursor:pointer;transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.025)}
+tbody td{padding:.75rem .9rem;font-size:.83rem;vertical-align:middle}
+.td-mono{font-family:'SF Mono','Fira Code',monospace;font-size:.78rem}
+.td-muted{color:var(--muted);font-size:.75rem}
+
+/* ---- Badges ---- */
+.badge{display:inline-flex;align-items:center;gap:.25rem;padding:.18rem .55rem;border-radius:20px;font-size:.67rem;font-weight:600;letter-spacing:.03rem;text-transform:uppercase;white-space:nowrap}
+.badge::before{content:'●';font-size:.45rem}
+.badge-authorized{background:rgba(59,130,246,.15);color:#60a5fa}
+.badge-captured{background:rgba(16,185,129,.15);color:#34d399}
+.badge-partial_captured{background:rgba(16,185,129,.1);color:#6ee7b7}
+.badge-refunded{background:rgba(139,92,246,.15);color:#a78bfa}
+.badge-partial_refunded{background:rgba(139,92,246,.1);color:#c4b5fd}
+.badge-cancelled{background:rgba(239,68,68,.1);color:#f87171}
+.badge-failed{background:rgba(239,68,68,.18);color:#ef4444}
+.badge-pending{background:rgba(107,114,128,.15);color:#9ca3af}
+.badge-paid{background:rgba(16,185,129,.15);color:#34d399}
+
+/* ---- Method pill ---- */
+.method-pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--text)}
+.method-icon{width:26px;height:17px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:700;flex-shrink:0}
+.method-visa{background:#1a1f71;color:#fff}
+.method-mastercard{background:#eb001b;color:#fff}
+.method-klarna{background:#ffb3c7;color:#1a0000}
+.method-swish{background:#fff;color:#e40045;border:1px solid #e40045}
+.method-paypal{background:#003087;color:#fff}
+.method-amex{background:#007bc1;color:#fff}
+.method-applepay{background:#000;color:#fff}
+
+/* ---- Buttons ---- */
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.48rem .95rem;border-radius:6px;font-family:inherit;font-size:.83rem;font-weight:500;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-hover)}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#059669}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#dc2626}
+.btn-warning{background:var(--warning);color:#000}.btn-warning:hover{background:#d97706}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}.btn-ghost:hover{background:rgba(255,255,255,.06)}
+.btn-sm{padding:.3rem .7rem;font-size:.78rem}
+.btn-block{width:100%;justify-content:center}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ---- Drawer ---- */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:none}
+#overlay.open{display:block}
+#drawer{position:fixed;top:0;right:-650px;bottom:0;width:650px;background:var(--surface);border-left:1px solid var(--border);z-index:201;display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1);overflow-y:auto}
+#drawer.open{right:0}
+.drawer-header{padding:1.1rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:10}
+.drawer-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:.3rem .45rem;border-radius:4px;transition:all .15s;line-height:1}
+.drawer-close:hover{color:var(--text);background:rgba(255,255,255,.06)}
+.drawer-body{padding:1.1rem 1.4rem;flex:1}
+.drawer-section{margin-bottom:1.4rem}
+.section-title{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.08rem;color:var(--muted);margin-bottom:.7rem;padding-bottom:.4rem;border-bottom:1px solid var(--border-light)}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:.55rem}
+.info-item label{display:block;font-size:.68rem;color:var(--muted);margin-bottom:.12rem;text-transform:uppercase;letter-spacing:.05rem}
+.info-item span{font-size:.85rem;font-weight:500}
+
+/* ---- Timeline ---- */
+.timeline{list-style:none;position:relative}
+.timeline::before{content:'';position:absolute;left:6px;top:8px;bottom:0;width:1px;background:var(--border)}
+.tl-item{display:flex;gap:.9rem;padding-bottom:.9rem;position:relative}
+.tl-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--border);background:var(--surface);flex-shrink:0;margin-top:3px}
+.tl-dot.success{border-color:var(--success);background:rgba(16,185,129,.2)}
+.tl-dot.info{border-color:var(--info);background:rgba(59,130,246,.2)}
+.tl-dot.warning{border-color:var(--warning);background:rgba(245,158,11,.2)}
+.tl-dot.danger{border-color:var(--danger);background:rgba(239,68,68,.2)}
+.tl-dot.purple{border-color:var(--purple);background:rgba(139,92,246,.2)}
+.tl-event{font-size:.85rem;font-weight:500}
+.tl-meta{font-size:.73rem;color:var(--muted);margin-top:.15rem}
+.tl-amount{font-size:.78rem;margin-top:.15rem;font-weight:600}
+
+/* ---- Action forms ---- */
+.action-form{background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:8px;padding:.9rem;margin-top:.5rem}
+.action-form label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:.25rem}
+.action-form input{width:100%;margin-bottom:.6rem}
+.action-form .hint{font-size:.7rem;color:var(--muted);margin-bottom:.6rem;line-height:1.5}
+
+/* ---- Items table (drawer) ---- */
+.items-table{width:100%;font-size:.83rem}
+.items-table th{text-align:left;color:var(--muted);font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.06rem;padding:.35rem 0;border-bottom:1px solid var(--border-light)}
+.items-table td{padding:.45rem 0;border-bottom:1px solid var(--border-light);vertical-align:top}
+.items-table tr:last-child td{border-bottom:none}
+.items-table .r{text-align:right}
+
+/* ---- Payment summary ---- */
+.pay-row{display:flex;justify-content:space-between;padding:.28rem 0;font-size:.85rem}
+.pay-row.dim{color:var(--muted);font-size:.78rem}
+.pay-row.total{font-weight:700;font-size:.95rem;border-top:1px solid var(--border);margin-top:.3rem;padding-top:.55rem}
+
+/* ---- Reports ---- */
+.payout-details{display:none;background:rgba(0,0,0,.18)}
+.payout-details.open{display:table-row}
+.payout-inner{padding:.85rem 1rem}
+
+/* ---- Insights ---- */
+.widgets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem}
+.widget{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.15rem;position:relative}
+.widget-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.widget-title{font-size:.85rem;font-weight:600}
+.widget-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;border-radius:4px;padding:.2rem .4rem;transition:all .15s}
+.widget-remove:hover{color:var(--danger);background:rgba(239,68,68,.1)}
+.widget-big-num{font-size:2rem;font-weight:700;letter-spacing:-.03em}
+.widget-sub{font-size:.73rem;color:var(--muted);margin-top:.2rem}
+.customize-panel{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.9rem 1.1rem;margin-bottom:1rem;display:none}
+.customize-panel.open{display:block}
+.widget-options{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.6rem}
+.widget-toggle{display:flex;align-items:center;gap:.35rem;padding:.3rem .7rem;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;font-size:.78rem;transition:all .15s}
+.widget-toggle.on{background:rgba(99,102,241,.15);border-color:var(--primary);color:var(--primary)}
+.widget-toggle:hover{border-color:var(--primary);color:var(--text)}
+
+/* ---- Toast ---- */
+#toast-container{position:fixed;bottom:1.4rem;right:1.4rem;z-index:999;display:flex;flex-direction:column;gap:.45rem;pointer-events:none}
+.toast{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.65rem .9rem;font-size:.83rem;min-width:270px;animation:toastIn .25s ease,toastOut .3s ease 2.7s forwards;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.toast.success{border-left:3px solid var(--success)}.toast.error{border-left:3px solid var(--danger)}.toast.info{border-left:3px solid var(--info)}
+@keyframes toastIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastOut{to{opacity:0;transform:translateY(6px)}}
+
+/* ---- Misc ---- */
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.empty-state{text-align:center;padding:2.5rem;color:var(--muted)}
+.empty-icon{font-size:1.8rem;margin-bottom:.6rem}
+.divider{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.flex-row{display:flex;gap:.5rem;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Sidebar -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">💳</div>
+    <div><div class="logo-name">PayCore</div><div class="logo-sub">Merchant Portal</div></div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Commerce</div>
+    <div class="nav-item active" onclick="showView('orders')" id="nav-orders">
+      <span class="nav-icon">📋</span><span>Orders</span>
+      <span class="nav-badge" id="badge-orders">0</span>
+    </div>
+    <div class="nav-section">Finance</div>
+    <div class="nav-item" onclick="showView('reports')" id="nav-reports">
+      <span class="nav-icon">💰</span><span>Payout Reports</span>
+    </div>
+    <div class="nav-section">Analytics</div>
+    <div class="nav-item" onclick="showView('insights')" id="nav-insights">
+      <span class="nav-icon">📊</span><span>Merchant Insights</span>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div style="font-weight:600;color:var(--text);margin-bottom:.2rem">Teknik Huset AB</div>
+    <div>MID: 4829-3311-AB</div>
+    <div style="margin-top:.3rem;color:var(--success);font-size:.68rem">● Live</div>
+  </div>
+</nav>
+
+<!-- Main -->
+<div id="main">
+
+  <!-- ORDERS -->
+  <div id="view-orders" class="view active">
+    <div class="view-header">
+      <div><div class="view-title">Orders</div><div class="view-sub" id="orders-sub">Loading…</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="toast('Exporting orders to CSV…','info')">⬇ Export CSV</button>
+    </div>
+    <div class="view-body">
+      <div class="stats-grid" id="order-stats"></div>
+      <div class="filters">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input id="search-input" type="text" placeholder="Search order ID, customer, email…" oninput="applyFilters()"/>
+        </div>
+        <select id="filter-status" onchange="applyFilters()">
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="authorized">Authorized</option>
+          <option value="captured">Captured</option>
+          <option value="partial_captured">Partially Captured</option>
+          <option value="refunded">Refunded</option>
+          <option value="partial_refunded">Partially Refunded</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="failed">Failed</option>
+        </select>
+        <select id="filter-method" onchange="applyFilters()">
+          <option value="">All Methods</option>
+          <option value="visa">Visa</option>
+          <option value="mastercard">Mastercard</option>
+          <option value="klarna">Klarna</option>
+          <option value="swish">Swish</option>
+          <option value="paypal">PayPal</option>
+          <option value="amex">Amex</option>
+          <option value="applepay">Apple Pay</option>
+        </select>
+        <input type="date" id="filter-from" onchange="applyFilters()" title="From date"/>
+        <input type="date" id="filter-to" onchange="applyFilters()" title="To date"/>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th onclick="sortBy('id')">Order ID ↕</th>
+            <th onclick="sortBy('date')">Date ↕</th>
+            <th>Customer</th>
+            <th>Items</th>
+            <th onclick="sortBy('amount')" style="text-align:right">Amount ↕</th>
+            <th>Method</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="orders-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORTS -->
+  <div id="view-reports" class="view">
+    <div class="view-header">
+      <div><div class="view-title">Payout Reports</div><div class="view-sub">Settlements to bank account SE••••1234</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="toast('Downloading PDF statement…','info')">📄 PDF Statement</button>
+    </div>
+    <div class="view-body">
+      <div class="stats-grid" id="report-stats"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Payout ID</th><th>Period</th><th>Transactions</th>
+            <th style="text-align:right">Gross</th>
+            <th style="text-align:right">Fees</th>
+            <th style="text-align:right">Net Payout</th>
+            <th>Status</th><th>Paid Date</th>
+          </tr></thead>
+          <tbody id="reports-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSIGHTS -->
+  <div id="view-insights" class="view">
+    <div class="view-header">
+      <div><div class="view-title">Merchant Insights</div><div class="view-sub">Customizable analytics dashboard</div></div>
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <select id="insights-period" onchange="renderInsights()">
+          <option value="7">Last 7 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="toggleCustomize()">⚙ Customize</button>
+      </div>
+    </div>
+    <div class="view-body">
+      <div class="customize-panel" id="customize-panel">
+        <div style="font-size:.85rem;font-weight:600;margin-bottom:.2rem">Toggle Widgets</div>
+        <div style="font-size:.73rem;color:var(--muted)">Click to show or hide widgets on your dashboard.</div>
+        <div class="widget-options" id="widget-options"></div>
+      </div>
+      <div class="widgets-grid" id="widgets-grid"></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<div id="overlay" onclick="closeDrawer()"></div>
+<div id="drawer">
+  <div class="drawer-header" id="drawer-header"></div>
+  <div class="drawer-body" id="drawer-body"></div>
+</div>
+<div id="toast-container"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════
+
+const CUSTOMERS = [
+  {id:'C01',name:'Erik Johansson',  email:'erik.j@gmail.com',     phone:'070-234 56 78',address:'Storgatan 12, 111 22 Stockholm',   country:'SE'},
+  {id:'C02',name:'Anna Lindström',  email:'anna.l@outlook.com',   phone:'073-456 78 90',address:'Vasagatan 8, 411 37 Göteborg',     country:'SE'},
+  {id:'C03',name:'Marcus Berg',     email:'m.berg@hotmail.com',   phone:'076-567 89 01',address:'Davidshallsgatan 3, 211 45 Malmö', country:'SE'},
+  {id:'C04',name:'Sofia Eriksson',  email:'sofia.e@gmail.com',    phone:'072-678 90 12',address:'Svartbäcksgatan 5, 753 32 Uppsala',country:'SE'},
+  {id:'C05',name:'Lars Petersson',  email:'lars.p@yahoo.se',      phone:'070-789 01 23',address:'Kopparbergsvägen 2, 722 13 Västerås',country:'SE'},
+  {id:'C06',name:'Emma Nilsson',    email:'emma.n@gmail.com',     phone:'073-890 12 34',address:'Drottninggatan 14, 703 61 Örebro', country:'SE'},
+  {id:'C07',name:'Johan Gustafsson',email:'johan.g@icloud.com',   phone:'076-901 23 45',address:'Hamngatan 9, 582 22 Linköping',    country:'SE'},
+  {id:'C08',name:'Maria Svensson',  email:'maria.s@outlook.com',  phone:'072-012 34 56',address:'Kullagatan 7, 252 20 Helsingborg', country:'SE'},
+  {id:'C09',name:'Anders Holm',     email:'a.holm@gmail.com',     phone:'070-123 45 67',address:'Hospitalsgatan 1, 602 21 Norrköping',country:'SE'},
+  {id:'C10',name:'Sara Björk',      email:'sara.b@gmail.com',     phone:'073-234 56 78',address:'Stora Algatan 6, 222 29 Lund',     country:'SE'},
+];
+
+const PRODUCTS = [
+  {id:'P01',name:'MacBook Pro 16" M3',       price:27990},
+  {id:'P02',name:'iPhone 15 Pro 256GB',       price:14990},
+  {id:'P03',name:'AirPods Pro 2nd Gen',        price:2990},
+  {id:'P04',name:'iPad Air M2 11"',            price:9490},
+  {id:'P05',name:'Samsung Galaxy S24 Ultra',   price:16490},
+  {id:'P06',name:'Sony WH-1000XM5',            price:4490},
+  {id:'P07',name:'Dell XPS 15 OLED',           price:22990},
+  {id:'P08',name:'Logitech MX Master 3S',      price:1290},
+  {id:'P09',name:'Apple Watch Series 9 45mm',  price:5990},
+  {id:'P10',name:'Samsung 32" 4K Monitor',     price:8990},
+  {id:'P11',name:'12-in-1 USB-C Hub',          price:890},
+  {id:'P12',name:'Crucial X9 Pro SSD 2TB',     price:1490},
+  {id:'P13',name:'MagSafe Charger 15W',        price:490},
+  {id:'P14',name:'iPad Magic Keyboard',        price:3990},
+  {id:'P15',name:'ASUS ROG Keris Wireless',    price:1190},
+  {id:'P16',name:'Elgato Stream Deck MK.2',    price:2190},
+  {id:'P17',name:'LG 27" UltraFine 5K',        price:14990},
+  {id:'P18',name:'Philips Hue Starter Kit',    price:1790},
+];
+
+const METHODS = {
+  visa:      {label:'Visa',       last4:'4242',exp:'12/27',network:'VISA'},
+  mastercard:{label:'Mastercard', last4:'5555',exp:'08/26',network:'MC'},
+  klarna:    {label:'Klarna',     type:'Pay Later 30 days'},
+  swish:     {label:'Swish',      phone:'070-234 56 78'},
+  paypal:    {label:'PayPal',     email:'user@paypal.com'},
+  amex:      {label:'Amex',       last4:'3782',exp:'05/28',network:'AMEX'},
+  applepay:  {label:'Apple Pay',  last4:'8871',network:'VISA'},
+};
+
+const METHOD_ABBR = {visa:'VISA',mastercard:'MC',klarna:'KL',swish:'SW',paypal:'PP',amex:'AMEX',applepay:'⌘'};
+
+function dAgo(days,h=10,m=0){
+  const d=new Date(); d.setDate(d.getDate()-days); d.setHours(h,m,0,0); return d.toISOString();
+}
+
+let _orderId=10001;
+function mkOrder({c,items,method,status,dago,capAmt,refAmt}){
+  const its=items.map(([pid,qty])=>{const p=PRODUCTS.find(x=>x.id===pid);return{name:p.name,quantity:qty,unit_price:p.price,total:p.price*qty};});
+  const subtotal=its.reduce((s,i)=>s+i.total,0);
+  const tax=Math.round(subtotal*0.2);
+  const shipping=subtotal>10000?0:99;
+  const total=subtotal+shipping;
+  const needsCap=status==='captured'||status==='partial_captured'||status==='refunded'||status==='partial_refunded';
+  const cap=capAmt!==undefined?capAmt:(needsCap?total:0);
+  const ref=refAmt!==undefined?refAmt:(status==='refunded'?total:0);
+  const hrs=9+Math.floor(dago%7);
+  const mins=Math.floor((dago*17)%60);
+  const createdAt=dAgo(dago,hrs,mins);
+  const tl=[];
+  tl.push({event:'Order Created',dot:'info',at:createdAt,by:'customer'});
+  if(status!=='pending'&&status!=='failed'){
+    const authAt=new Date(new Date(createdAt).getTime()+60000).toISOString();
+    const code=Math.random().toString(36).slice(2,8).toUpperCase();
+    tl.push({event:'Payment Authorized',dot:'info',at:authAt,by:'PayCore Gateway',amount:total,note:`Auth: ${code}`});
+  }
+  if(status==='failed'){
+    const failAt=new Date(new Date(createdAt).getTime()+30000).toISOString();
+    tl.push({event:'Payment Failed',dot:'danger',at:failAt,by:'PayCore Gateway',note:'Card declined — insufficient funds'});
+  }
+  if(status==='cancelled'){
+    const ca=new Date(new Date(createdAt).getTime()+7200000).toISOString();
+    tl.push({event:'Order Cancelled & Voided',dot:'danger',at:ca,by:'merchant@teknikhuset.se'});
+  }
+  if(cap>0){
+    const ca=new Date(new Date(createdAt).getTime()+86400000).toISOString();
+    tl.push({event:cap<total?'Partial Capture':'Payment Captured',dot:'success',at:ca,by:'System',amount:cap});
+  }
+  if(ref>0){
+    const ra=new Date(new Date(createdAt).getTime()+259200000).toISOString();
+    tl.push({event:ref>=cap?'Full Refund Processed':'Partial Refund Processed',dot:'purple',at:ra,by:'merchant@teknikhuset.se',amount:-ref});
+  }
+  return{id:`ORD-${_orderId++}`,customer:c,items:its,subtotal,tax,shipping,total,method,status,authorized_amount:total,captured_amount:cap,refunded_amount:ref,created_at:createdAt,currency:'SEK',timeline:tl};
+}
+
+const ORDERS=[
+  // AUTHORIZED (5)
+  mkOrder({c:CUSTOMERS[0],items:[['P02',1],['P03',1]],method:'visa',       status:'authorized',dago:0}),
+  mkOrder({c:CUSTOMERS[3],items:[['P04',1],['P14',1]],method:'klarna',     status:'authorized',dago:1}),
+  mkOrder({c:CUSTOMERS[6],items:[['P01',1]],          method:'mastercard', status:'authorized',dago:1}),
+  mkOrder({c:CUSTOMERS[9],items:[['P09',1],['P08',1]],method:'applepay',   status:'authorized',dago:2}),
+  mkOrder({c:CUSTOMERS[4],items:[['P05',1]],          method:'swish',      status:'authorized',dago:2}),
+  // CAPTURED (12)
+  mkOrder({c:CUSTOMERS[1],items:[['P06',1],['P11',1],['P13',2]],method:'visa',      status:'captured',dago:3}),
+  mkOrder({c:CUSTOMERS[2],items:[['P10',1],['P12',1]],           method:'klarna',   status:'captured',dago:4}),
+  mkOrder({c:CUSTOMERS[5],items:[['P16',1]],                     method:'mastercard',status:'captured',dago:5}),
+  mkOrder({c:CUSTOMERS[7],items:[['P07',1]],                     method:'visa',     status:'captured',dago:6}),
+  mkOrder({c:CUSTOMERS[8],items:[['P02',1],['P13',1]],           method:'swish',    status:'captured',dago:7}),
+  mkOrder({c:CUSTOMERS[0],items:[['P15',2],['P08',1]],           method:'paypal',   status:'captured',dago:8}),
+  mkOrder({c:CUSTOMERS[3],items:[['P17',1]],                     method:'visa',     status:'captured',dago:9}),
+  mkOrder({c:CUSTOMERS[6],items:[['P18',2],['P11',1]],           method:'klarna',   status:'captured',dago:10}),
+  mkOrder({c:CUSTOMERS[1],items:[['P09',1]],                     method:'mastercard',status:'captured',dago:11}),
+  mkOrder({c:CUSTOMERS[4],items:[['P04',1]],                     method:'visa',     status:'captured',dago:12}),
+  mkOrder({c:CUSTOMERS[9],items:[['P06',1],['P08',2]],           method:'klarna',   status:'captured',dago:13}),
+  mkOrder({c:CUSTOMERS[2],items:[['P13',3],['P11',1]],           method:'mastercard',status:'captured',dago:14}),
+  // PARTIALLY CAPTURED (3)
+  mkOrder({c:CUSTOMERS[2],items:[['P01',1],['P09',1]],method:'mastercard',status:'partial_captured',dago:5,capAmt:27990}),
+  mkOrder({c:CUSTOMERS[7],items:[['P05',1],['P06',1]],method:'klarna',    status:'partial_captured',dago:8,capAmt:16490}),
+  mkOrder({c:CUSTOMERS[9],items:[['P02',2]],          method:'visa',      status:'partial_captured',dago:6,capAmt:14990}),
+  // REFUNDED (4)
+  mkOrder({c:CUSTOMERS[5],items:[['P03',1]],         method:'visa',      status:'refunded',dago:15}),
+  mkOrder({c:CUSTOMERS[8],items:[['P06',1]],         method:'paypal',    status:'refunded',dago:18}),
+  mkOrder({c:CUSTOMERS[0],items:[['P13',3]],         method:'klarna',    status:'refunded',dago:20}),
+  mkOrder({c:CUSTOMERS[3],items:[['P15',1]],         method:'mastercard',status:'refunded',dago:22}),
+  // PARTIALLY REFUNDED (3)
+  mkOrder({c:CUSTOMERS[1],items:[['P01',1],['P11',2]],method:'visa',  status:'partial_refunded',dago:14,refAmt:890*2}),
+  mkOrder({c:CUSTOMERS[6],items:[['P02',1],['P03',2]],method:'klarna',status:'partial_refunded',dago:16,refAmt:2990}),
+  mkOrder({c:CUSTOMERS[4],items:[['P10',1],['P08',2]],method:'swish', status:'partial_refunded',dago:25,refAmt:1290*2}),
+  // CANCELLED (3)
+  mkOrder({c:CUSTOMERS[2],items:[['P07',1]],  method:'visa',       status:'cancelled',dago:10}),
+  mkOrder({c:CUSTOMERS[8],items:[['P05',1]],  method:'amex',       status:'cancelled',dago:13}),
+  mkOrder({c:CUSTOMERS[5],items:[['P01',1]],  method:'mastercard', status:'cancelled',dago:28}),
+  // FAILED (2)
+  mkOrder({c:CUSTOMERS[7],items:[['P02',1]],       method:'visa',      status:'failed',dago:3}),
+  mkOrder({c:CUSTOMERS[9],items:[['P04',1],['P14',1]],method:'mastercard',status:'failed',dago:9}),
+];
+
+// Fix partial_refunded captured amounts
+ORDERS.forEach(o=>{if(o.status==='partial_refunded'&&o.captured_amount===0)o.captured_amount=o.total;});
+
+// Payouts
+const PAYOUTS=[
+  {id:'PAY-2645',pf:dAgo(7),pt:dAgo(1),gross:312450,fees:4831,net:307619,currency:'SEK',status:'pending',paid_at:null,tx:18,
+   orders:ORDERS.filter(o=>['captured','partial_captured'].includes(o.status)).slice(0,6).map(o=>o.id)},
+  {id:'PAY-2644',pf:dAgo(14),pt:dAgo(8),gross:284900,fees:4392,net:280508,currency:'SEK',status:'paid',paid_at:dAgo(6),tx:15,
+   orders:ORDERS.filter(o=>o.status==='captured').slice(0,5).map(o=>o.id)},
+  {id:'PAY-2643',pf:dAgo(21),pt:dAgo(15),gross:198730,fees:3141,net:195589,currency:'SEK',status:'paid',paid_at:dAgo(13),tx:11,
+   orders:ORDERS.filter(o=>o.status!=='failed').slice(8,12).map(o=>o.id)},
+  {id:'PAY-2642',pf:dAgo(28),pt:dAgo(22),gross:445200,fees:6791,net:438409,currency:'SEK',status:'paid',paid_at:dAgo(20),tx:23,orders:[]},
+  {id:'PAY-2641',pf:dAgo(35),pt:dAgo(29),gross:321100,fees:4988,net:316112,currency:'SEK',status:'paid',paid_at:dAgo(27),tx:19,orders:[]},
+  {id:'PAY-2640',pf:dAgo(42),pt:dAgo(36),gross:267800,fees:4122,net:263678,currency:'SEK',status:'paid',paid_at:dAgo(34),tx:16,orders:[]},
+  {id:'PAY-2639',pf:dAgo(49),pt:dAgo(43),gross:389500,fees:5981,net:383519,currency:'SEK',status:'paid',paid_at:dAgo(41),tx:21,orders:[]},
+];
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+const state={
+  view:'orders',
+  selectedOrder:null,
+  filtered:[...ORDERS],
+  sortField:'date',
+  sortDir:'desc',
+  activeWidgets:new Set(['revenue','orders','conversion','aov','methods','statuses','topCustomers']),
+  charts:{},
+};
+
+// ═══════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════
+function fmt(n){return n.toLocaleString('sv-SE')+' SEK';}
+function fmtD(iso){return new Date(iso).toLocaleString('sv-SE',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}
+function fmtDS(iso){return new Date(iso).toLocaleDateString('sv-SE',{month:'short',day:'numeric',year:'numeric'});}
+
+function badge(s){
+  const L={pending:'Pending',authorized:'Authorized',captured:'Captured',partial_captured:'Part. Captured',refunded:'Refunded',partial_refunded:'Part. Refunded',cancelled:'Cancelled',failed:'Failed'};
+  return `<span class="badge badge-${s}">${L[s]||s}</span>`;
+}
+
+function methodPill(m){
+  const md=METHODS[m];
+  if(!md)return m;
+  return `<span class="method-pill"><span class="method-icon method-${m}">${METHOD_ABBR[m]||m[0].toUpperCase()}</span>${md.label}</span>`;
+}
+
+function toast(msg,type='info'){
+  const c=document.getElementById('toast-container');
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;
+  el.textContent=msg;
+  c.appendChild(el);
+  setTimeout(()=>el.remove(),3200);
+}
+
+// ═══════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById(`view-${name}`).classList.add('active');
+  document.getElementById(`nav-${name}`).classList.add('active');
+  state.view=name;
+  if(name==='orders'){renderOrderStats();applyFilters();}
+  if(name==='reports')renderReports();
+  if(name==='insights')renderInsights();
+}
+
+// ═══════════════════════════════════════════════
+//  ORDERS LIST
+// ═══════════════════════════════════════════════
+function renderOrderStats(){
+  const captured=ORDERS.reduce((s,o)=>s+(o.captured_amount||0),0);
+  const pending=ORDERS.filter(o=>o.status==='authorized').length;
+  const refunded=ORDERS.reduce((s,o)=>s+(o.refunded_amount||0),0);
+  const failed=ORDERS.filter(o=>o.status==='failed').length;
+  document.getElementById('order-stats').innerHTML=`
+    <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value">${fmt(captured)}</div><div class="stat-change up">↑ captured & settled</div></div>
+    <div class="stat-card"><div class="stat-label">Pending Capture</div><div class="stat-value">${pending}</div><div class="stat-change">orders awaiting delivery</div></div>
+    <div class="stat-card"><div class="stat-label">Total Orders</div><div class="stat-value">${ORDERS.length}</div><div class="stat-change">${ORDERS.filter(o=>!['failed','cancelled'].includes(o.status)).length} successful</div></div>
+    <div class="stat-card"><div class="stat-label">Total Refunded</div><div class="stat-value">${fmt(refunded)}</div><div class="stat-change down">↓ returned to customers</div></div>
+  `;
+  document.getElementById('badge-orders').textContent=pending;
+}
+
+function applyFilters(){
+  const q=document.getElementById('search-input').value.toLowerCase();
+  const st=document.getElementById('filter-status').value;
+  const mt=document.getElementById('filter-method').value;
+  const fr=document.getElementById('filter-from').value;
+  const to=document.getElementById('filter-to').value;
+  state.filtered=ORDERS.filter(o=>{
+    if(q&&!o.id.toLowerCase().includes(q)&&!o.customer.name.toLowerCase().includes(q)&&!o.customer.email.toLowerCase().includes(q))return false;
+    if(st&&o.status!==st)return false;
+    if(mt&&o.method!==mt)return false;
+    if(fr&&o.created_at<fr)return false;
+    if(to&&o.created_at>to+'T23:59:59')return false;
+    return true;
+  });
+  sortOrders();renderOrdersTable();
+}
+
+function sortBy(f){
+  if(state.sortField===f)state.sortDir=state.sortDir==='asc'?'desc':'asc';
+  else{state.sortField=f;state.sortDir='desc';}
+  sortOrders();renderOrdersTable();
+}
+
+function sortOrders(){
+  state.filtered.sort((a,b)=>{
+    let av,bv;
+    if(state.sortField==='id'){av=a.id;bv=b.id;}
+    else if(state.sortField==='date'){av=a.created_at;bv=b.created_at;}
+    else if(state.sortField==='amount'){av=a.total;bv=b.total;}
+    else return 0;
+    return state.sortDir==='asc'?(av>bv?1:-1):(av<bv?1:-1);
+  });
+}
+
+function renderOrdersTable(){
+  document.getElementById('orders-sub').textContent=`${state.filtered.length} of ${ORDERS.length} orders`;
+  const tb=document.getElementById('orders-tbody');
+  if(!state.filtered.length){
+    tb.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📭</div>No orders match your filters</div></td></tr>';return;
+  }
+  tb.innerHTML=state.filtered.map(o=>{
+    const summary=o.items.length===1?o.items[0].name:`${o.items[0].name} +${o.items.length-1} more`;
+    return `<tr onclick="openDrawer('${o.id}')">
+      <td class="td-mono" style="color:var(--primary)">${o.id}</td>
+      <td><div>${fmtDS(o.created_at)}</div><div class="td-muted">${new Date(o.created_at).toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'})}</div></td>
+      <td><div style="font-weight:500">${o.customer.name}</div><div class="td-muted">${o.customer.email}</div></td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.items.map(i=>i.name).join(', ')}">${summary}</td>
+      <td style="text-align:right"><div style="font-weight:600">${fmt(o.total)}</div>${o.refunded_amount>0?`<div class="td-muted" style="color:var(--purple)">−${fmt(o.refunded_amount)}</div>`:''}</td>
+      <td>${methodPill(o.method)}</td>
+      <td>${badge(o.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  ORDER DRAWER
+// ═══════════════════════════════════════════════
+function openDrawer(id){
+  state.selectedOrder=id;
+  renderDrawer(ORDERS.find(o=>o.id===id));
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+}
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+  state.selectedOrder=null;
+}
+
+function renderDrawer(o){
+  const m=METHODS[o.method];
+  const refundable=o.captured_amount-(o.refunded_amount||0);
+  const capturable=o.authorized_amount-(o.captured_amount||0);
+
+  document.getElementById('drawer-header').innerHTML=`
+    <div>
+      <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.35rem">
+        <span style="font-size:.95rem;font-weight:700;font-family:monospace;color:var(--primary)">${o.id}</span>
+        ${badge(o.status)}
+      </div>
+      <div style="font-size:.78rem;color:var(--muted)">${fmtD(o.created_at)} · ${o.currency}</div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  `;
+
+  let mDetails='';
+  if(m.last4)mDetails=`•••• •••• •••• ${m.last4} · Exp ${m.exp}`;
+  else if(m.type)mDetails=m.type;
+  else if(m.phone)mDetails=m.phone;
+  else if(m.email)mDetails=m.email;
+
+  document.getElementById('drawer-body').innerHTML=`
+    <div class="drawer-section">
+      <div class="section-title">Customer</div>
+      <div class="info-grid">
+        <div class="info-item"><label>Name</label><span>${o.customer.name}</span></div>
+        <div class="info-item"><label>Email</label><span>${o.customer.email}</span></div>
+        <div class="info-item"><label>Phone</label><span>${o.customer.phone}</span></div>
+        <div class="info-item"><label>Address</label><span>${o.customer.address}</span></div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="section-title">Order Items</div>
+      <table class="items-table">
+        <thead><tr><th>Item</th><th>Qty</th><th class="r">Unit price</th><th class="r">Total</th></tr></thead>
+        <tbody>${o.items.map(i=>`<tr><td>${i.name}</td><td style="color:var(--muted)">×${i.quantity}</td><td class="r">${fmt(i.unit_price)}</td><td class="r" style="font-weight:500">${fmt(i.total)}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+
+    <div class="drawer-section">
+      <div class="section-title">Payment Summary</div>
+      <div class="pay-row dim"><span>Subtotal</span><span>${fmt(o.subtotal)}</span></div>
+      <div class="pay-row dim"><span>Shipping</span><span>${o.shipping===0?'Free':fmt(o.shipping)}</span></div>
+      <div class="pay-row dim"><span>Tax (incl. 20%)</span><span>${fmt(o.tax)}</span></div>
+      <div class="pay-row total"><span>Order Total</span><span>${fmt(o.total)}</span></div>
+      ${o.captured_amount>0?`<div class="pay-row" style="color:var(--success);margin-top:.3rem"><span>Captured</span><span>${fmt(o.captured_amount)}</span></div>`:''}
+      ${o.refunded_amount>0?`<div class="pay-row" style="color:var(--purple)"><span>Refunded</span><span>−${fmt(o.refunded_amount)}</span></div>`:''}
+    </div>
+
+    <div class="drawer-section">
+      <div class="section-title">Payment Method</div>
+      <div style="display:flex;align-items:center;gap:.8rem">
+        <span class="method-icon method-${o.method}" style="width:42px;height:28px;font-size:.7rem">${METHOD_ABBR[o.method]}</span>
+        <div><div style="font-weight:500">${m.label}</div><div style="font-size:.78rem;color:var(--muted)">${mDetails}</div></div>
+      </div>
+    </div>
+
+    <div class="drawer-section" id="actions-section">
+      <div class="section-title">Actions</div>
+      ${renderActions(o,refundable,capturable)}
+    </div>
+
+    <div class="drawer-section">
+      <div class="section-title">Timeline</div>
+      <ul class="timeline">
+        ${[...o.timeline].reverse().map(e=>`
+          <li class="tl-item">
+            <div class="tl-dot ${e.dot}"></div>
+            <div>
+              <div class="tl-event">${e.event}</div>
+              <div class="tl-meta">${fmtD(e.at)}${e.by?' · '+e.by:''}</div>
+              ${e.amount!=null?`<div class="tl-amount" style="${e.amount<0?'color:var(--purple)':''}">${e.amount<0?'−':''}${fmt(Math.abs(e.amount))}</div>`:''}
+              ${e.note?`<div class="tl-meta">${e.note}</div>`:''}
+            </div>
+          </li>`).join('')}
+      </ul>
+    </div>
+  `;
+}
+
+function renderActions(o,refundable,capturable){
+  const s=o.status;
+  if(s==='failed')return`<p style="color:var(--muted);font-size:.83rem">Payment failed — no actions available.</p>`;
+  if(s==='refunded')return`<p style="color:var(--muted);font-size:.83rem">Order fully refunded — no further actions available.</p>`;
+  if(s==='cancelled')return`<p style="color:var(--danger);font-size:.83rem">Order cancelled and voided. Authorization released.</p>`;
+
+  let h='<div style="display:flex;flex-direction:column;gap:.8rem">';
+
+  if(s==='authorized'||s==='partial_captured'){
+    h+=`<div>
+      <div style="font-size:.8rem;font-weight:600;margin-bottom:.3rem">Capture Payment</div>
+      <div class="action-form">
+        <label>Amount (max ${fmt(capturable)})</label>
+        <input type="number" id="inp-capture" value="${capturable}" min="1" max="${capturable}" step="1"/>
+        <div class="hint">Capturing delivers the order and initiates settlement to your bank account.</div>
+        <button class="btn btn-success btn-block" onclick="doCapture('${o.id}')">✓ Capture ${capturable<o.authorized_amount?'Remaining ':''}Payment</button>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="doCancel('${o.id}')" style="color:var(--danger);border-color:rgba(239,68,68,.4)">✕ Cancel & Void Order</button>`;
+  }
+
+  if(s==='captured'||s==='partial_refunded'){
+    h+=`<div>
+      <div style="font-size:.8rem;font-weight:600;margin-bottom:.3rem">Issue Refund</div>
+      <div style="font-size:.73rem;color:var(--muted);margin-bottom:.4rem">Available to refund: <strong style="color:var(--text)">${fmt(refundable)}</strong></div>
+      <div class="action-form">
+        <label>Refund amount</label>
+        <input type="number" id="inp-refund" value="${refundable}" min="1" max="${refundable}" step="1"/>
+        <div class="hint">Refunds are processed within 3–5 business days back to the customer's payment method.</div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-warning btn-block" onclick="doRefund('${o.id}',false)">↩ Process Refund</button>
+          <button class="btn btn-ghost btn-sm" onclick="doRefund('${o.id}',true)" title="Refund full remaining amount">Full</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  h+=`<div class="flex-row">
+    <button class="btn btn-ghost btn-sm" onclick="toast('Receipt sent to ${o.customer.email}','success')">📧 Send Receipt</button>
+    <button class="btn btn-ghost btn-sm" onclick="toast('Invoice PDF downloading…','info')">📄 Invoice</button>
+    <button class="btn btn-ghost btn-sm" onclick="toast('Order flagged for review','info')">🚩 Flag Order</button>
+    <button class="btn btn-ghost btn-sm" onclick="toast('Link copied to clipboard','info')">🔗 Share</button>
+  </div>`;
+
+  h+='</div>';
+  return h;
+}
+
+// ═══════════════════════════════════════════════
+//  PSP ACTIONS
+// ═══════════════════════════════════════════════
+function doCapture(id){
+  const o=ORDERS.find(x=>x.id===id);
+  const max=o.authorized_amount-o.captured_amount;
+  const inp=document.getElementById('inp-capture');
+  const amt=parseFloat(inp?inp.value:max);
+  if(!amt||amt<=0||amt>max){toast('Invalid capture amount','error');return;}
+  o.captured_amount+=amt;
+  o.status=o.captured_amount>=o.authorized_amount?'captured':'partial_captured';
+  o.timeline.push({event:o.status==='captured'?'Payment Captured':'Partial Capture',dot:'success',at:new Date().toISOString(),by:'merchant@teknikhuset.se',amount:amt});
+  renderDrawer(o);
+  renderOrdersTable();renderOrderStats();
+  toast(`${fmt(amt)} captured successfully`,'success');
+}
+
+function doCancel(id){
+  if(!confirm('Cancel and void this order? The authorization will be released. This cannot be undone.'))return;
+  const o=ORDERS.find(x=>x.id===id);
+  o.status='cancelled';
+  o.timeline.push({event:'Order Cancelled & Voided',dot:'danger',at:new Date().toISOString(),by:'merchant@teknikhuset.se'});
+  renderDrawer(o);renderOrdersTable();renderOrderStats();
+  toast('Order cancelled and voided','error');
+}
+
+function doRefund(id,full){
+  const o=ORDERS.find(x=>x.id===id);
+  const max=o.captured_amount-(o.refunded_amount||0);
+  const inp=document.getElementById('inp-refund');
+  const amt=full?max:parseFloat(inp?inp.value:max);
+  if(!amt||amt<=0||amt>max){toast('Invalid refund amount','error');return;}
+  o.refunded_amount=(o.refunded_amount||0)+amt;
+  o.status=o.refunded_amount>=o.captured_amount?'refunded':'partial_refunded';
+  o.timeline.push({event:o.status==='refunded'?'Full Refund Processed':'Partial Refund Processed',dot:'purple',at:new Date().toISOString(),by:'merchant@teknikhuset.se',amount:-amt});
+  renderDrawer(o);renderOrdersTable();renderOrderStats();
+  toast(`Refund of ${fmt(amt)} processed`,'success');
+}
+
+// ═══════════════════════════════════════════════
+//  REPORTS
+// ═══════════════════════════════════════════════
+function renderReports(){
+  const totalPaid=PAYOUTS.filter(p=>p.status==='paid').reduce((s,p)=>s+p.net,0);
+  const pending=PAYOUTS.filter(p=>p.status==='pending').reduce((s,p)=>s+p.net,0);
+  const fees=PAYOUTS.reduce((s,p)=>s+p.fees,0);
+  const txCount=PAYOUTS.reduce((s,p)=>s+p.tx,0);
+
+  document.getElementById('report-stats').innerHTML=`
+    <div class="stat-card"><div class="stat-label">Total Paid Out (YTD)</div><div class="stat-value">${fmt(totalPaid)}</div><div class="stat-change up">to SE••••1234</div></div>
+    <div class="stat-card"><div class="stat-label">Pending Payout</div><div class="stat-value">${fmt(pending)}</div><div class="stat-change">Expected 1–2 business days</div></div>
+    <div class="stat-card"><div class="stat-label">Total Fees (YTD)</div><div class="stat-value">${fmt(fees)}</div><div class="stat-change down">1.54% + 2 SEK / tx</div></div>
+    <div class="stat-card"><div class="stat-label">Transactions Settled</div><div class="stat-value">${txCount}</div><div class="stat-change">across ${PAYOUTS.length} payouts</div></div>
+  `;
+
+  document.getElementById('reports-tbody').innerHTML=PAYOUTS.map(p=>`
+    <tr class="payout-row" onclick="togglePayout('${p.id}')">
+      <td class="td-mono" style="color:var(--primary)">${p.id}</td>
+      <td>${fmtDS(p.pf)} – ${fmtDS(p.pt)}</td>
+      <td>${p.tx}</td>
+      <td style="text-align:right">${fmt(p.gross)}</td>
+      <td style="text-align:right;color:var(--danger)">−${fmt(p.fees)}</td>
+      <td style="text-align:right;font-weight:600;color:var(--success)">${fmt(p.net)}</td>
+      <td>${p.status==='paid'?'<span class="badge badge-paid">Paid</span>':'<span class="badge badge-pending">Pending</span>'}</td>
+      <td>${p.paid_at?fmtDS(p.paid_at):'—'}</td>
+    </tr>
+    <tr id="pd-${p.id}" class="payout-details">
+      <td colspan="8">
+        <div class="payout-inner">
+          <div style="font-size:.7rem;font-weight:600;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;letter-spacing:.06rem">Included Transactions</div>
+          ${p.orders.length?p.orders.map(oid=>{
+            const o=ORDERS.find(x=>x.id===oid);
+            return o?`<div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid var(--border-light);font-size:.8rem;cursor:pointer" onclick="openDrawer('${o.id}')">
+              <span style="color:var(--primary);font-family:monospace">${o.id}</span>
+              <span>${o.customer.name}</span>
+              <span>${methodPill(o.method)}</span>
+              <span style="font-weight:600">${fmt(o.captured_amount)}</span>
+              ${badge(o.status)}
+            </div>`:''}).join('')
+            :'<div style="color:var(--muted);font-size:.8rem">Full transaction list available in downloaded report.</div>'}
+          <div class="flex-row" style="margin-top:.7rem">
+            <button class="btn btn-ghost btn-sm" onclick="toast('Downloading CSV for ${p.id}…','info')">⬇ CSV</button>
+            <button class="btn btn-ghost btn-sm" onclick="toast('Downloading PDF statement…','info')">📄 PDF</button>
+            <button class="btn btn-ghost btn-sm" onclick="toast('Sending to accountant@teknikhuset.se','success')">📧 Send to accountant</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function togglePayout(id){
+  document.getElementById(`pd-${id}`).classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════
+//  INSIGHTS
+// ═══════════════════════════════════════════════
+const WIDGET_DEFS={
+  revenue:    {label:'Revenue Over Time',      icon:'📈',wide:true},
+  orders:     {label:'Orders Per Day',         icon:'📦',wide:true},
+  conversion: {label:'Conversion Rate',        icon:'🎯',wide:false},
+  aov:        {label:'Average Order Value',    icon:'💰',wide:false},
+  methods:    {label:'Payment Method Split',   icon:'💳',wide:false},
+  statuses:   {label:'Order Status Breakdown', icon:'🗂',wide:false},
+  topCustomers:{label:'Top Customers',         icon:'👥',wide:true},
+};
+
+function toggleCustomize(){
+  const p=document.getElementById('customize-panel');
+  p.classList.toggle('open');
+  if(p.classList.contains('open'))renderWidgetToggles();
+}
+
+function renderWidgetToggles(){
+  document.getElementById('widget-options').innerHTML=Object.entries(WIDGET_DEFS).map(([k,d])=>
+    `<button class="widget-toggle ${state.activeWidgets.has(k)?'on':''}" onclick="toggleWidget('${k}')">${d.icon} ${d.label}</button>`
+  ).join('');
+}
+
+function toggleWidget(k){
+  if(state.activeWidgets.has(k))state.activeWidgets.delete(k);else state.activeWidgets.add(k);
+  renderWidgetToggles();renderInsights();
+}
+
+function destroyCharts(){
+  Object.values(state.charts).forEach(c=>{try{c.destroy();}catch(e){}});
+  state.charts={};
+}
+
+function renderInsights(){
+  destroyCharts();
+  const period=parseInt(document.getElementById('insights-period')?.value||30);
+  const grid=document.getElementById('widgets-grid');
+
+  if(!state.activeWidgets.size){
+    grid.innerHTML='<div class="empty-state"><div class="empty-icon">📊</div>No widgets active. Click Customize to add some.</div>';return;
+  }
+
+  // Compute stats
+  const nonFailed=ORDERS.filter(o=>o.status!=='failed');
+  const convRate=((nonFailed.length/ORDERS.length)*100).toFixed(1);
+  const totalCap=ORDERS.reduce((s,o)=>s+(o.captured_amount||0),0);
+  const capCount=ORDERS.filter(o=>o.captured_amount>0).length;
+  const aov=capCount?Math.round(totalCap/capCount):0;
+
+  // Daily data
+  const daily=[];
+  for(let i=period-1;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const ds=d.toISOString().slice(0,10);
+    const day=ORDERS.filter(o=>o.created_at.slice(0,10)===ds);
+    daily.push({label:d.toLocaleDateString('sv-SE',{month:'short',day:'numeric'}),revenue:day.reduce((s,o)=>s+(o.captured_amount||0),0),count:day.length});
+  }
+
+  const methodTotals={};ORDERS.forEach(o=>{methodTotals[o.method]=(methodTotals[o.method]||0)+o.total;});
+  const statusCounts={};ORDERS.forEach(o=>{statusCounts[o.status]=(statusCounts[o.status]||0)+1;});
+  const custMap={};ORDERS.forEach(o=>{const c=o.customer;if(!custMap[c.id])custMap[c.id]={name:c.name,email:c.email,count:0,total:0};custMap[c.id].count++;custMap[c.id].total+=o.total;});
+  const topC=Object.values(custMap).sort((a,b)=>b.total-a.total).slice(0,5);
+
+  const CD={responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#7d8590',font:{family:'Inter',size:11}}}},
+    scales:{x:{ticks:{color:'#7d8590',font:{size:10}},grid:{color:'#21262d'}},y:{ticks:{color:'#7d8590',font:{size:10}},grid:{color:'#21262d'}}}};
+  const COLORS=['#6366f1','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899'];
+  const STATUS_C={authorized:'#3b82f6',captured:'#10b981',partial_captured:'#6ee7b7',refunded:'#8b5cf6',partial_refunded:'#c4b5fd',cancelled:'#ef4444',failed:'#dc2626',pending:'#6b7280'};
+  const STATUS_L={authorized:'Authorized',captured:'Captured',partial_captured:'Part. Captured',refunded:'Refunded',partial_refunded:'Part. Refunded',cancelled:'Cancelled',failed:'Failed',pending:'Pending'};
+
+  grid.innerHTML='';
+  [...state.activeWidgets].forEach(key=>{
+    const def=WIDGET_DEFS[key];
+    const div=document.createElement('div');
+    div.className='widget';
+    if(def.wide)div.style.gridColumn='span 2';
+
+    let inner=`<div class="widget-header"><span class="widget-title">${def.icon} ${def.label}</span><button class="widget-remove" onclick="toggleWidget('${key}')">✕</button></div>`;
+
+    if(key==='conversion')inner+=`<div class="widget-big-num">${convRate}%</div><div class="widget-sub">${nonFailed.length} of ${ORDERS.length} orders completed successfully</div>`;
+    else if(key==='aov')inner+=`<div class="widget-big-num">${fmt(aov)}</div><div class="widget-sub">based on ${capCount} captured orders</div>`;
+    else if(key==='revenue')inner+=`<div style="height:210px"><canvas id="chart-revenue"></canvas></div>`;
+    else if(key==='orders')inner+=`<div style="height:210px"><canvas id="chart-orders"></canvas></div>`;
+    else if(key==='methods')inner+=`<div style="height:210px"><canvas id="chart-methods"></canvas></div>`;
+    else if(key==='statuses')inner+=`<div style="height:210px"><canvas id="chart-statuses"></canvas></div>`;
+    else if(key==='topCustomers')inner+=`
+      <table style="width:100%;font-size:.82rem">
+        <thead><tr>
+          <th style="text-align:left;color:var(--muted);font-size:.68rem;font-weight:600;text-transform:uppercase;padding:.3rem 0;border-bottom:1px solid var(--border)">Customer</th>
+          <th style="text-align:right;color:var(--muted);font-size:.68rem;font-weight:600;text-transform:uppercase;padding:.3rem 0;border-bottom:1px solid var(--border)">Orders</th>
+          <th style="text-align:right;color:var(--muted);font-size:.68rem;font-weight:600;text-transform:uppercase;padding:.3rem 0;border-bottom:1px solid var(--border)">Total</th>
+        </tr></thead>
+        <tbody>${topC.map(c=>`<tr>
+          <td style="padding:.4rem 0;border-bottom:1px solid var(--border-light)">${c.name}<br><span style="color:var(--muted);font-size:.7rem">${c.email}</span></td>
+          <td style="text-align:right;padding:.4rem 0;border-bottom:1px solid var(--border-light)">${c.count}</td>
+          <td style="text-align:right;font-weight:600;padding:.4rem 0;border-bottom:1px solid var(--border-light)">${fmt(c.total)}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+
+    div.innerHTML=inner;
+    grid.appendChild(div);
+
+    requestAnimationFrame(()=>{
+      if(key==='revenue'&&document.getElementById('chart-revenue')){
+        state.charts.revenue=new Chart(document.getElementById('chart-revenue'),{type:'line',
+          data:{labels:daily.map(d=>d.label),datasets:[{label:'Revenue',data:daily.map(d=>d.revenue),borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,.1)',fill:true,tension:.4,pointRadius:2,pointHoverRadius:4}]},
+          options:{...CD,plugins:{...CD.plugins,legend:{display:false}}}});
+      }
+      if(key==='orders'&&document.getElementById('chart-orders')){
+        state.charts.orders=new Chart(document.getElementById('chart-orders'),{type:'bar',
+          data:{labels:daily.map(d=>d.label),datasets:[{label:'Orders',data:daily.map(d=>d.count),backgroundColor:'rgba(99,102,241,.55)',borderRadius:3}]},
+          options:{...CD,plugins:{...CD.plugins,legend:{display:false}}}});
+      }
+      if(key==='methods'&&document.getElementById('chart-methods')){
+        state.charts.methods=new Chart(document.getElementById('chart-methods'),{type:'doughnut',
+          data:{labels:Object.keys(methodTotals).map(k=>METHODS[k]?.label||k),datasets:[{data:Object.values(methodTotals),backgroundColor:COLORS,borderWidth:0,borderRadius:3}]},
+          options:{...CD,scales:{},cutout:'62%'}});
+      }
+      if(key==='statuses'&&document.getElementById('chart-statuses')){
+        state.charts.statuses=new Chart(document.getElementById('chart-statuses'),{type:'bar',
+          data:{labels:Object.keys(statusCounts).map(k=>STATUS_L[k]||k),datasets:[{data:Object.values(statusCounts),backgroundColor:Object.keys(statusCounts).map(k=>STATUS_C[k]||'#6366f1'),borderRadius:4}]},
+          options:{...CD,indexAxis:'y',plugins:{...CD.plugins,legend:{display:false}}}});
+      }
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+renderOrderStats();
+applyFilters();
+</script>
+</body>
+</html>
